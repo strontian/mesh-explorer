@@ -1,0 +1,8 @@
+node_modules/
+dist/
+
+# Generated data files — run `node scripts/fetch-mesh.js` to regenerate
+public/mesh-terms.json
+scripts/desc2026.gz
+
+.DS_Store
