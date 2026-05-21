@@ -545,8 +545,9 @@ function animalEmoji(name) {
 
 function BodyMap({ data }) {
   const { branches, childrenMap } = data;
-  const [sel, setSel]     = useState({ type:"systemic" });
+  const [sel, setSel]       = useState({ type:"systemic" });
   const [hovReg, setHovReg] = useState(null);
+  const [bodyStyle, setBodyStyle] = useState("geo");
   const byTN = Object.fromEntries(branches.map(b => [b.treeNum, b]));
 
   const isSysSel  = () => sel.type === "systemic";
@@ -780,43 +781,158 @@ function BodyMap({ data }) {
             ⟳ SYSTEMIC / CROSS-CUTTING
           </button>
 
-          {/* SVG body */}
-          <svg viewBox="0 0 200 365" width={168} style={{ display:"block", margin:"0 auto" }}>
-            {/* Arm silhouettes (decorative) */}
-            <rect x={22} y={95} width={21} height={72} rx={10} fill="#ffffff05" stroke="#ffffff0e" strokeWidth={1}/>
-            <rect x={157} y={95} width={21} height={72} rx={10} fill="#ffffff05" stroke="#ffffff0e" strokeWidth={1}/>
-            {/* Leg silhouettes (decorative) */}
-            <rect x={61} y={308} width={32} height={48} rx={9} fill="#ffffff05" stroke="#ffffff0e" strokeWidth={1}/>
-            <rect x={107} y={308} width={32} height={48} rx={9} fill="#ffffff05" stroke="#ffffff0e" strokeWidth={1}/>
+          {/* Style toggle */}
+          <div style={{ display:"flex", gap:3, justifyContent:"center" }}>
+            {[["geo","Geo"],["outline","Outline"],["wire","Wire"]].map(([id,label]) => (
+              <button key={id} onClick={()=>setBodyStyle(id)} style={{ padding:"3px 8px", fontFamily:mono, fontSize:8, letterSpacing:1, background:bodyStyle===id?TREE_COLOR+"22":"#ffffff06", border:`1px solid ${bodyStyle===id?TREE_COLOR:"#ffffff11"}`, borderRadius:3, cursor:"pointer", color:bodyStyle===id?TREE_COLOR:"#ffffff44", transition:"all 0.12s" }}>{label}</button>
+            ))}
+          </div>
 
-            {/* HEAD */}
-            <g onClick={()=>setSel({type:"region",id:"head"})} onMouseEnter={()=>setHovReg("head")} onMouseLeave={()=>setHovReg(null)} style={{cursor:"pointer"}}>
-              <ellipse cx={100} cy={44} rx={34} ry={31} fill={rFill("head","#FF9A9E")} stroke={rStroke("head","#FF9A9E")} strokeWidth={rSW("head")} style={{transition:"all 0.15s"}}/>
-              <rect x={87} y={75} width={26} height={18} rx={5} fill={rFill("head","#FF9A9E")} stroke={rStroke("head","#FF9A9E")} strokeWidth={rSW("head")} style={{transition:"all 0.15s"}}/>
-              <text x={100} y={42} textAnchor="middle" fontFamily={mono} fontSize={8} fontWeight={600} fill={rTxt("head","#FF9A9E")} style={{pointerEvents:"none",transition:"fill 0.15s"}}>HEAD</text>
-              <text x={100} y={55} textAnchor="middle" fontFamily={mono} fontSize={7} fill={rTxt("head","#FF9A9E")+"88"} style={{pointerEvents:"none"}}>& SENSES</text>
-            </g>
+          {/* SVG body — viewBox 0 0 210 365, width 190 */}
+          <svg viewBox="0 0 210 365" width={190} style={{ display:"block", margin:"0 auto" }}>
 
-            {/* CHEST */}
-            <g onClick={()=>setSel({type:"region",id:"chest"})} onMouseEnter={()=>setHovReg("chest")} onMouseLeave={()=>setHovReg(null)} style={{cursor:"pointer"}}>
-              <rect x={44} y={93} width={112} height={92} rx={8} fill={rFill("chest","#4ECDC4")} stroke={rStroke("chest","#4ECDC4")} strokeWidth={rSW("chest")} style={{transition:"all 0.15s"}}/>
-              <text x={100} y={133} textAnchor="middle" fontFamily={mono} fontSize={8} fontWeight={600} fill={rTxt("chest","#4ECDC4")} style={{pointerEvents:"none",transition:"fill 0.15s"}}>CHEST</text>
-              <text x={100} y={147} textAnchor="middle" fontFamily={mono} fontSize={7} fill={rTxt("chest","#4ECDC4")+"88"} style={{pointerEvents:"none"}}>HEART · LUNGS</text>
-            </g>
+            {/* ── Callout helper refs ── */}
+            {/* Callouts rendered after body shapes so they appear on top */}
 
-            {/* ABDOMEN */}
-            <g onClick={()=>setSel({type:"region",id:"abdomen"})} onMouseEnter={()=>setHovReg("abdomen")} onMouseLeave={()=>setHovReg(null)} style={{cursor:"pointer"}}>
-              <rect x={52} y={185} width={96} height={72} rx={7} fill={rFill("abdomen","#81B29A")} stroke={rStroke("abdomen","#81B29A")} strokeWidth={rSW("abdomen")} style={{transition:"all 0.15s"}}/>
-              <text x={100} y={221} textAnchor="middle" fontFamily={mono} fontSize={8} fontWeight={600} fill={rTxt("abdomen","#81B29A")} style={{pointerEvents:"none",transition:"fill 0.15s"}}>ABDOMEN</text>
-              <text x={100} y={234} textAnchor="middle" fontFamily={mono} fontSize={7} fill={rTxt("abdomen","#81B29A")+"88"} style={{pointerEvents:"none"}}>GI · METABOLIC</text>
-            </g>
+            {bodyStyle === "geo" && <>
+              {/* Arm silhouettes (decorative) */}
+              <rect x={20} y={92} width={22} height={76} rx={11} fill="#ffffff05" stroke="#ffffff0e" strokeWidth={1}/>
+              <rect x={158} y={92} width={22} height={76} rx={11} fill="#ffffff05" stroke="#ffffff0e" strokeWidth={1}/>
+              {/* Leg silhouettes (decorative) */}
+              <rect x={60} y={298} width={34} height={58} rx={10} fill="#ffffff05" stroke="#ffffff0e" strokeWidth={1}/>
+              <rect x={106} y={298} width={34} height={58} rx={10} fill="#ffffff05" stroke="#ffffff0e" strokeWidth={1}/>
+              {/* Neck */}
+              <rect x={91} y={74} width={18} height={16} rx={5} fill="#ffffff05" stroke="#ffffff0e" strokeWidth={1}/>
 
-            {/* PELVIS */}
-            <g onClick={()=>setSel({type:"region",id:"pelvis"})} onMouseEnter={()=>setHovReg("pelvis")} onMouseLeave={()=>setHovReg(null)} style={{cursor:"pointer"}}>
-              <rect x={58} y={257} width={84} height={50} rx={6} fill={rFill("pelvis","#A8DADC")} stroke={rStroke("pelvis","#A8DADC")} strokeWidth={rSW("pelvis")} style={{transition:"all 0.15s"}}/>
-              <text x={100} y={281} textAnchor="middle" fontFamily={mono} fontSize={8} fontWeight={600} fill={rTxt("pelvis","#A8DADC")} style={{pointerEvents:"none",transition:"fill 0.15s"}}>PELVIS</text>
-              <text x={100} y={294} textAnchor="middle" fontFamily={mono} fontSize={7} fill={rTxt("pelvis","#A8DADC")+"88"} style={{pointerEvents:"none"}}>UROGENITAL</text>
-            </g>
+              {/* HEAD */}
+              <g onClick={()=>setSel({type:"region",id:"head"})} onMouseEnter={()=>setHovReg("head")} onMouseLeave={()=>setHovReg(null)} style={{cursor:"pointer"}}>
+                <ellipse cx={100} cy={42} rx={28} ry={32} fill={rFill("head","#FF9A9E")} stroke={rStroke("head","#FF9A9E")} strokeWidth={rSW("head")} style={{transition:"all 0.15s"}}/>
+              </g>
+              {/* CHEST */}
+              <g onClick={()=>setSel({type:"region",id:"chest"})} onMouseEnter={()=>setHovReg("chest")} onMouseLeave={()=>setHovReg(null)} style={{cursor:"pointer"}}>
+                <rect x={46} y={90} width={108} height={88} rx={10} fill={rFill("chest","#4ECDC4")} stroke={rStroke("chest","#4ECDC4")} strokeWidth={rSW("chest")} style={{transition:"all 0.15s"}}/>
+              </g>
+              {/* ABDOMEN */}
+              <g onClick={()=>setSel({type:"region",id:"abdomen"})} onMouseEnter={()=>setHovReg("abdomen")} onMouseLeave={()=>setHovReg(null)} style={{cursor:"pointer"}}>
+                <rect x={54} y={178} width={92} height={68} rx={8} fill={rFill("abdomen","#81B29A")} stroke={rStroke("abdomen","#81B29A")} strokeWidth={rSW("abdomen")} style={{transition:"all 0.15s"}}/>
+              </g>
+              {/* PELVIS */}
+              <g onClick={()=>setSel({type:"region",id:"pelvis"})} onMouseEnter={()=>setHovReg("pelvis")} onMouseLeave={()=>setHovReg(null)} style={{cursor:"pointer"}}>
+                <rect x={56} y={246} width={88} height={52} rx={8} fill={rFill("pelvis","#A8DADC")} stroke={rStroke("pelvis","#A8DADC")} strokeWidth={rSW("pelvis")} style={{transition:"all 0.15s"}}/>
+              </g>
+            </>}
+
+            {bodyStyle === "outline" && <>
+              {/* Outline body path */}
+              <circle cx={100} cy={38} r={28} fill="none" stroke="#ffffff18" strokeWidth={1.2}/>
+              <path d="M70,68 C65,68 40,78 38,95 L36,168 C36,175 46,182 54,182 L54,248 C54,258 58,308 62,358 L80,358 L86,260 L114,260 L120,358 L138,358 C142,308 146,258 146,248 L146,182 C154,182 164,175 164,168 L162,95 C160,78 135,68 130,68 Z" fill="none" stroke="#ffffff18" strokeWidth={1.2}/>
+              {/* Neck line */}
+              <line x1={91} y1={66} x2={91} y2={74} stroke="#ffffff10" strokeWidth={1}/>
+              <line x1={109} y1={66} x2={109} y2={74} stroke="#ffffff10" strokeWidth={1}/>
+
+              {/* Invisible hit zones matching Geo proportions */}
+              {/* HEAD */}
+              <g onClick={()=>setSel({type:"region",id:"head"})} onMouseEnter={()=>setHovReg("head")} onMouseLeave={()=>setHovReg(null)} style={{cursor:"pointer"}}>
+                <ellipse cx={100} cy={38} rx={28} ry={32} fill={rFill("head","#FF9A9E")} stroke={rStroke("head","#FF9A9E")} strokeWidth={rSW("head")} style={{transition:"all 0.15s"}}/>
+              </g>
+              {/* CHEST */}
+              <g onClick={()=>setSel({type:"region",id:"chest"})} onMouseEnter={()=>setHovReg("chest")} onMouseLeave={()=>setHovReg(null)} style={{cursor:"pointer"}}>
+                <rect x={38} y={74} width={124} height={108} rx={6} fill={rFill("chest","#4ECDC4")} stroke={rStroke("chest","#4ECDC4")} strokeWidth={rSW("chest")} style={{transition:"all 0.15s"}}/>
+              </g>
+              {/* ABDOMEN */}
+              <g onClick={()=>setSel({type:"region",id:"abdomen"})} onMouseEnter={()=>setHovReg("abdomen")} onMouseLeave={()=>setHovReg(null)} style={{cursor:"pointer"}}>
+                <rect x={46} y={182} width={108} height={66} rx={6} fill={rFill("abdomen","#81B29A")} stroke={rStroke("abdomen","#81B29A")} strokeWidth={rSW("abdomen")} style={{transition:"all 0.15s"}}/>
+              </g>
+              {/* PELVIS */}
+              <g onClick={()=>setSel({type:"region",id:"pelvis"})} onMouseEnter={()=>setHovReg("pelvis")} onMouseLeave={()=>setHovReg(null)} style={{cursor:"pointer"}}>
+                <rect x={54} y={248} width={92} height={56} rx={6} fill={rFill("pelvis","#A8DADC")} stroke={rStroke("pelvis","#A8DADC")} strokeWidth={rSW("pelvis")} style={{transition:"all 0.15s"}}/>
+              </g>
+            </>}
+
+            {bodyStyle === "wire" && <>
+              {/* Wire skeleton lines */}
+              {/* Spine */}
+              <line x1={100} y1={38} x2={100} y2={118} stroke="#ffffff15" strokeWidth={1}/>
+              <line x1={100} y1={118} x2={100} y2={192} stroke="#ffffff15" strokeWidth={1}/>
+              <line x1={100} y1={192} x2={72} y2={238} stroke="#ffffff15" strokeWidth={1}/>
+              <line x1={100} y1={192} x2={128} y2={238} stroke="#ffffff15" strokeWidth={1}/>
+              {/* Left arm */}
+              <line x1={62} y1={78} x2={38} y2={130} stroke="#ffffff15" strokeWidth={1}/>
+              <line x1={38} y1={130} x2={30} y2={178} stroke="#ffffff15" strokeWidth={1}/>
+              {/* Right arm */}
+              <line x1={138} y1={78} x2={162} y2={130} stroke="#ffffff15" strokeWidth={1}/>
+              <line x1={162} y1={130} x2={170} y2={178} stroke="#ffffff15" strokeWidth={1}/>
+              {/* Shoulders */}
+              <line x1={62} y1={78} x2={138} y2={78} stroke="#ffffff15" strokeWidth={1}/>
+              {/* Left leg */}
+              <line x1={72} y1={238} x2={72} y2={298} stroke="#ffffff15" strokeWidth={1}/>
+              <line x1={72} y1={298} x2={68} y2={356} stroke="#ffffff15" strokeWidth={1}/>
+              {/* Right leg */}
+              <line x1={128} y1={238} x2={128} y2={298} stroke="#ffffff15" strokeWidth={1}/>
+              <line x1={128} y1={298} x2={132} y2={356} stroke="#ffffff15" strokeWidth={1}/>
+
+              {/* Invisible hit zones */}
+              {/* HEAD */}
+              <g onClick={()=>setSel({type:"region",id:"head"})} onMouseEnter={()=>setHovReg("head")} onMouseLeave={()=>setHovReg(null)} style={{cursor:"pointer"}}>
+                <ellipse cx={100} cy={38} rx={28} ry={32} fill={rFill("head","#FF9A9E")} stroke={rStroke("head","#FF9A9E")} strokeWidth={rSW("head")} style={{transition:"all 0.15s"}}/>
+              </g>
+              {/* CHEST */}
+              <g onClick={()=>setSel({type:"region",id:"chest"})} onMouseEnter={()=>setHovReg("chest")} onMouseLeave={()=>setHovReg(null)} style={{cursor:"pointer"}}>
+                <rect x={54} y={74} width={92} height={108} rx={6} fill={rFill("chest","#4ECDC4")} stroke={rStroke("chest","#4ECDC4")} strokeWidth={rSW("chest")} style={{transition:"all 0.15s"}}/>
+              </g>
+              {/* ABDOMEN */}
+              <g onClick={()=>setSel({type:"region",id:"abdomen"})} onMouseEnter={()=>setHovReg("abdomen")} onMouseLeave={()=>setHovReg(null)} style={{cursor:"pointer"}}>
+                <rect x={54} y={182} width={92} height={56} rx={6} fill={rFill("abdomen","#81B29A")} stroke={rStroke("abdomen","#81B29A")} strokeWidth={rSW("abdomen")} style={{transition:"all 0.15s"}}/>
+              </g>
+              {/* PELVIS */}
+              <g onClick={()=>setSel({type:"region",id:"pelvis"})} onMouseEnter={()=>setHovReg("pelvis")} onMouseLeave={()=>setHovReg(null)} style={{cursor:"pointer"}}>
+                <rect x={60} y={238} width={80} height={60} rx={6} fill={rFill("pelvis","#A8DADC")} stroke={rStroke("pelvis","#A8DADC")} strokeWidth={rSW("pelvis")} style={{transition:"all 0.15s"}}/>
+              </g>
+
+              {/* Wire nodes — colored by region, decorative outside regions */}
+              {/* Head node */}
+              <circle cx={100} cy={38} r={4} fill={isRegSel("head")||hovReg==="head"?"#FF9A9E":"#FF9A9E44"} stroke="#FF9A9E55" strokeWidth={0.8} style={{pointerEvents:"none",transition:"all 0.15s"}}/>
+              {/* Chest-region nodes */}
+              <circle cx={62} cy={78} r={4} fill={isRegSel("chest")||hovReg==="chest"?"#4ECDC4":"#4ECDC444"} stroke="#4ECDC455" strokeWidth={0.8} style={{pointerEvents:"none",transition:"all 0.15s"}}/>
+              <circle cx={138} cy={78} r={4} fill={isRegSel("chest")||hovReg==="chest"?"#4ECDC4":"#4ECDC444"} stroke="#4ECDC455" strokeWidth={0.8} style={{pointerEvents:"none",transition:"all 0.15s"}}/>
+              <circle cx={100} cy={118} r={4} fill={isRegSel("chest")||hovReg==="chest"?"#4ECDC4":"#4ECDC444"} stroke="#4ECDC455" strokeWidth={0.8} style={{pointerEvents:"none",transition:"all 0.15s"}}/>
+              {/* Abdomen node */}
+              <circle cx={100} cy={192} r={4} fill={isRegSel("abdomen")||hovReg==="abdomen"?"#81B29A":"#81B29A44"} stroke="#81B29A55" strokeWidth={0.8} style={{pointerEvents:"none",transition:"all 0.15s"}}/>
+              {/* Pelvis/hip nodes */}
+              <circle cx={72} cy={238} r={4} fill={isRegSel("pelvis")||hovReg==="pelvis"?"#A8DADC":"#A8DADC44"} stroke="#A8DADC55" strokeWidth={0.8} style={{pointerEvents:"none",transition:"all 0.15s"}}/>
+              <circle cx={128} cy={238} r={4} fill={isRegSel("pelvis")||hovReg==="pelvis"?"#A8DADC":"#A8DADC44"} stroke="#A8DADC55" strokeWidth={0.8} style={{pointerEvents:"none",transition:"all 0.15s"}}/>
+              {/* Decorative peripheral nodes */}
+              <circle cx={38} cy={130} r={3} fill="#ffffff15" style={{pointerEvents:"none"}}/>
+              <circle cx={162} cy={130} r={3} fill="#ffffff15" style={{pointerEvents:"none"}}/>
+              <circle cx={30} cy={178} r={3} fill="#ffffff15" style={{pointerEvents:"none"}}/>
+              <circle cx={170} cy={178} r={3} fill="#ffffff15" style={{pointerEvents:"none"}}/>
+              <circle cx={72} cy={298} r={3} fill="#ffffff15" style={{pointerEvents:"none"}}/>
+              <circle cx={128} cy={298} r={3} fill="#ffffff15" style={{pointerEvents:"none"}}/>
+              <circle cx={68} cy={356} r={3} fill="#ffffff15" style={{pointerEvents:"none"}}/>
+              <circle cx={132} cy={356} r={3} fill="#ffffff15" style={{pointerEvents:"none"}}/>
+            </>}
+
+            {/* ── Callout labels (all variants) ── */}
+            {/* HEAD callout — dot + line to right label */}
+            <circle cx={100} cy={42} r={2.5} fill={rTxt("head","#FF9A9E")} style={{pointerEvents:"none",transition:"fill 0.15s"}}/>
+            <line x1={100} y1={42} x2={203} y2={42} stroke={rTxt("head","#FF9A9E")+"66"} strokeWidth={0.8} strokeDasharray="2,2" style={{pointerEvents:"none",transition:"stroke 0.15s"}}/>
+            <text x={205} y={45} fontFamily={mono} fontSize={6.5} fill={rTxt("head","#FF9A9E")} style={{pointerEvents:"none",transition:"fill 0.15s"}}>HEAD &amp; SENSES</text>
+
+            {/* CHEST callout */}
+            <circle cx={152} cy={125} r={2.5} fill={rTxt("chest","#4ECDC4")} style={{pointerEvents:"none",transition:"fill 0.15s"}}/>
+            <line x1={152} y1={125} x2={203} y2={125} stroke={rTxt("chest","#4ECDC4")+"66"} strokeWidth={0.8} strokeDasharray="2,2" style={{pointerEvents:"none",transition:"stroke 0.15s"}}/>
+            <text x={205} y={128} fontFamily={mono} fontSize={6.5} fill={rTxt("chest","#4ECDC4")} style={{pointerEvents:"none",transition:"fill 0.15s"}}>CHEST</text>
+
+            {/* ABDOMEN callout */}
+            <circle cx={144} cy={210} r={2.5} fill={rTxt("abdomen","#81B29A")} style={{pointerEvents:"none",transition:"fill 0.15s"}}/>
+            <line x1={144} y1={210} x2={203} y2={210} stroke={rTxt("abdomen","#81B29A")+"66"} strokeWidth={0.8} strokeDasharray="2,2" style={{pointerEvents:"none",transition:"stroke 0.15s"}}/>
+            <text x={205} y={213} fontFamily={mono} fontSize={6.5} fill={rTxt("abdomen","#81B29A")} style={{pointerEvents:"none",transition:"fill 0.15s"}}>ABDOMEN</text>
+
+            {/* PELVIS callout */}
+            <circle cx={142} cy={268} r={2.5} fill={rTxt("pelvis","#A8DADC")} style={{pointerEvents:"none",transition:"fill 0.15s"}}/>
+            <line x1={142} y1={268} x2={203} y2={268} stroke={rTxt("pelvis","#A8DADC")+"66"} strokeWidth={0.8} strokeDasharray="2,2" style={{pointerEvents:"none",transition:"stroke 0.15s"}}/>
+            <text x={205} y={271} fontFamily={mono} fontSize={6.5} fill={rTxt("pelvis","#A8DADC")} style={{pointerEvents:"none",transition:"fill 0.15s"}}>PELVIS</text>
+
           </svg>
 
           <button onClick={() => setSel({type:"distributed"})} style={{ padding:"6px 10px", fontFamily:mono, fontSize:8, letterSpacing:1, background:isDistSel()?"#DDB89222":"#ffffff08", border:`1px solid ${isDistSel()?"#DDB892":"#ffffff11"}`, borderRadius:4, cursor:"pointer", color:isDistSel()?"#DDB892":"#ffffff44", transition:"all 0.12s" }}>
