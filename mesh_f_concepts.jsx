@@ -186,7 +186,7 @@ function FourQuadrants({ data }) {
 // Focus on F03 Mental Disorders. Direct children as cards with grandchildren chips.
 // ═══════════════════════════════════════════════════════════════════════════
 function DisorderTaxonomy({ data }) {
-  const [selected, setSelected] = useState(null);
+  const [selected, setSelected] = useState("F03");
   const { branches, childrenMap } = data;
 
   const f03 = branches.find(b => b.treeNum === "F03");
@@ -202,6 +202,22 @@ function DisorderTaxonomy({ data }) {
     a.treeNum.localeCompare(b.treeNum, undefined, { numeric: true })
   );
 
+  const nodeByPath = new Map();
+  for (const b of branches) nodeByPath.set(b.treeNum, b.term);
+  for (const kids of childrenMap.values()) {
+    for (const { term, treeNum } of kids) nodeByPath.set(treeNum, term);
+  }
+
+  function lineage(treeNum) {
+    const parts = treeNum.split(".");
+    const nodes = [];
+    for (let i = 1; i <= parts.length; i++) {
+      const path = parts.slice(0, i).join(".");
+      nodes.push({ treeNum: path, term: nodeByPath.get(path) });
+    }
+    return nodes;
+  }
+
   function countAll(treeNum) {
     let n = 0;
     const q = [treeNum];
@@ -214,13 +230,30 @@ function DisorderTaxonomy({ data }) {
     return n;
   }
 
-  const selChild = selected
-    ? f03Children.find(c => c.treeNum === selected)
-    : null;
-  const grandchildren = selected
+  function collectVisibleDescendants(rootTreeNum, maxItems = 90, maxDepth = 4) {
+    const rows = [];
+    const walk = (treeNum, depth) => {
+      if (depth > maxDepth || rows.length >= maxItems) return;
+      const kids = (childrenMap.get(treeNum) || []).sort((a, b) =>
+        a.treeNum.localeCompare(b.treeNum, undefined, { numeric: true })
+      );
+      for (const child of kids) {
+        if (rows.length >= maxItems) break;
+        const grandCount = (childrenMap.get(child.treeNum) || []).length;
+        rows.push({ ...child, depth, grandCount });
+        if (grandCount > 0) walk(child.treeNum, depth + 1);
+      }
+    };
+    walk(rootTreeNum, 1);
+    return rows;
+  }
+
+  const selectedTerm = selected ? nodeByPath.get(selected) : f03.term;
+  const selectedChildren = selected
     ? (childrenMap.get(selected) || []).sort((a, b) =>
         a.treeNum.localeCompare(b.treeNum, undefined, { numeric: true }))
     : [];
+  const selectedLineage = selected ? lineage(selected).filter(n => n.term) : [];
 
   // Color palette for disorder categories
   const COLORS = ["#E8A598","#9B72CF","#4ECDC4","#81B29A","#F4A261","#A8DADC","#DDB892","#FF9A9E","#B5C99A","#E07A5F","#C9B1FF","#FFD6A5"];
@@ -240,7 +273,9 @@ function DisorderTaxonomy({ data }) {
         <div style={{ flex: 1, padding: 20, overflowY: "auto", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12, alignContent: "start" }}>
           {f03Children.map(({ term, treeNum }, idx) => {
             const color = COLORS[idx % COLORS.length];
-            const grandkids = (childrenMap.get(treeNum) || []).slice(0, 6);
+            const grandkids = (childrenMap.get(treeNum) || []).sort((a, b) =>
+              a.treeNum.localeCompare(b.treeNum, undefined, { numeric: true })
+            ).slice(0, 8);
             const subCount = countAll(treeNum);
             const isSel = selected === treeNum;
             return (
@@ -269,13 +304,17 @@ function DisorderTaxonomy({ data }) {
                 {grandkids.length > 0 && (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 8 }}>
                     {grandkids.map(({ term: gt, treeNum: gtn }) => (
-                      <span key={gtn} style={{ fontFamily: mono, fontSize: 7.5, color: color + "cc", background: color + "14", border: `1px solid ${color}30`, borderRadius: 4, padding: "2px 6px" }}>
+                      <button
+                        key={gtn}
+                        onClick={(e) => { e.stopPropagation(); setSelected(gtn); }}
+                        style={{ fontFamily: mono, fontSize: 7.5, color: selected === gtn ? "#fff" : color + "cc", background: selected === gtn ? color + "28" : color + "14", border: `1px solid ${selected === gtn ? color : color + "30"}`, borderRadius: 4, padding: "2px 6px", cursor: "pointer" }}
+                      >
                         {gt.name}
-                      </span>
+                      </button>
                     ))}
-                    {(childrenMap.get(treeNum) || []).length > 6 && (
+                    {(childrenMap.get(treeNum) || []).length > 8 && (
                       <span style={{ fontFamily: mono, fontSize: 7.5, color: "#ffffff33", padding: "2px 6px" }}>
-                        +{(childrenMap.get(treeNum) || []).length - 6} more
+                        +{(childrenMap.get(treeNum) || []).length - 8} more
                       </span>
                     )}
                   </div>
@@ -286,140 +325,248 @@ function DisorderTaxonomy({ data }) {
         </div>
 
         {/* Selected detail panel */}
-        {selChild && (
-          <div style={{ width: 300, borderLeft: "1px solid #ffffff0a", padding: 20, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
-            <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff33", letterSpacing: 2 }}>{selChild.treeNum}</div>
-            <div style={{ fontFamily: mono, fontSize: 12, color: "#ffffffcc", fontWeight: 600, marginBottom: 4 }}>{selChild.term.name}</div>
-            <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff33", letterSpacing: 1, marginBottom: 8 }}>{grandchildren.length} SUBCATEGORIES</div>
-            {grandchildren.map(({ term, treeNum }) => (
-              <div key={treeNum} style={{ padding: "6px 10px", background: "#ffffff06", border: "1px solid #ffffff0a", borderRadius: 5 }}>
-                <div style={{ fontFamily: mono, fontSize: 6.5, color: TREE_COLOR + "77", letterSpacing: 1, marginBottom: 1 }}>{treeNum}</div>
-                <div style={{ fontFamily: mono, fontSize: 9.5, color: "#ffffffaa" }}>{term.name}</div>
-              </div>
-            ))}
+        <div style={{ width: 330, borderLeft: "1px solid #ffffff0a", padding: 20, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10, flexShrink: 0 }}>
+          <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff33", letterSpacing: 2 }}>SELECTED TERM</div>
+          <div>
+            <div style={{ fontFamily: mono, fontSize: 7, color: TREE_COLOR + "88", letterSpacing: 1, marginBottom: 4 }}>{selected || "F03"}</div>
+            <div style={{ fontFamily: mono, fontSize: 13, color: "#ffffffdd", fontWeight: 600, lineHeight: 1.35 }}>{selectedTerm?.name || "Mental Disorders"}</div>
           </div>
-        )}
+
+          {selectedLineage.length > 1 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 5, paddingBottom: 4 }}>
+              {selectedLineage.map((node, i) => (
+                <button
+                  key={node.treeNum}
+                  onClick={() => setSelected(node.treeNum)}
+                  style={{ fontFamily: mono, fontSize: 7, color: i === selectedLineage.length - 1 ? "#fff" : "#ffffff8a", background: i === selectedLineage.length - 1 ? TREE_COLOR + "22" : "#ffffff08", border: `1px solid ${i === selectedLineage.length - 1 ? TREE_COLOR + "66" : "#ffffff12"}`, borderRadius: 4, padding: "3px 6px", cursor: "pointer" }}
+                >
+                  {node.term?.name || node.treeNum}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {selectedTerm?.note && (
+            <div style={{ fontFamily: mono, fontSize: 8.5, color: "#ffffff66", lineHeight: 1.6, background: "#ffffff06", border: "1px solid #ffffff10", borderRadius: 6, padding: "10px 11px" }}>
+              {selectedTerm.note}
+            </div>
+          )}
+
+          <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff33", letterSpacing: 1 }}>
+            {selectedChildren.length} CHILD {selectedChildren.length === 1 ? "TERM" : "TERMS"}
+          </div>
+
+          {selectedChildren.length === 0 ? (
+            <div style={{ fontFamily: mono, fontSize: 8.5, color: "#ffffff35", lineHeight: 1.6 }}>
+              No narrower terms in the current MeSH data.
+            </div>
+          ) : (
+            selectedChildren.map(({ term, treeNum }) => {
+              const childCount = (childrenMap.get(treeNum) || []).length;
+              const active = selected === treeNum;
+              return (
+                <button
+                  key={treeNum}
+                  onClick={() => setSelected(treeNum)}
+                  style={{ textAlign: "left", padding: "7px 10px", background: active ? TREE_COLOR + "18" : "#ffffff06", border: `1px solid ${active ? TREE_COLOR + "66" : "#ffffff0a"}`, borderRadius: 5, cursor: "pointer" }}
+                >
+                  <div style={{ fontFamily: mono, fontSize: 6.5, color: TREE_COLOR + "77", letterSpacing: 1, marginBottom: 1 }}>{treeNum}</div>
+                  <div style={{ fontFamily: mono, fontSize: 9.5, color: "#ffffffaa", lineHeight: 1.35 }}>{term.name}</div>
+                  <div style={{ fontFamily: mono, fontSize: 7, color: "#ffffff2f", marginTop: 3 }}>{childCount} children</div>
+                </button>
+              );
+            })
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SKETCH 3 — BEHAVIOR SPECTRUM
-// F01 children as horizontal spectrum from primitive drives to complex social behavior.
-// Other branches shown as supporting cards below.
+// SKETCH 1 — MENTAL HEALTH STACK
+// Four layer view: behavior, phenomena, disorders, and practice.
 // ═══════════════════════════════════════════════════════════════════════════
-
-// Manual ordering from primitive/basic to complex/social
-// We'll sort F01 children alphabetically but present with a conceptual spectrum gradient
-function BehaviorSpectrum({ data }) {
-  const [hovered, setHovered] = useState(null);
+function MentalHealthStack({ data }) {
+  const [selected, setSelected] = useState("F01");
+  const [expandedByLayer, setExpandedByLayer] = useState({});
   const { branches, childrenMap } = data;
 
-  const f01 = branches.find(b => b.treeNum === "F01");
-  const otherBranches = branches.filter(b => b.treeNum !== "F01");
+  const LAYERS = [
+    { treeNum: "F01", label: "Behavior / Mechanisms", phrase: "what people do and the mechanisms behind it", color: "#9B72CF" },
+    { treeNum: "F02", label: "Phenomena / Theory", phrase: "mental processes, principles, and applied constructs", color: "#4ECDC4" },
+    { treeNum: "F03", label: "Disorders / Diagnosis", phrase: "when adaptation and mental function break down", color: "#E8A598" },
+    { treeNum: "F04", label: "Methods / Practice", phrase: "how psychology and psychiatry measure, treat, and organize work", color: "#81B29A" },
+  ];
 
-  const f01Children = f01
-    ? (childrenMap.get("F01") || []).sort((a, b) =>
-        a.treeNum.localeCompare(b.treeNum, undefined, { numeric: true }))
-    : [];
-
-  // Spectrum gradient: cool (primitive) → warm (complex/social)
-  function spectrumColor(idx, total) {
-    const t = total <= 1 ? 0 : idx / (total - 1);
-    // cool purple → warm salmon
-    const r = Math.round(155 + t * (232 - 155));
-    const g = Math.round(114 + t * (165 - 114));
-    const b2 = Math.round(207 - t * (207 - 152));
-    return `rgb(${r},${g},${b2})`;
+  const byId = new Map(branches.map(b => [b.treeNum, b]));
+  const nodeByPath = new Map();
+  for (const b of branches) nodeByPath.set(b.treeNum, b.term);
+  for (const kids of childrenMap.values()) {
+    for (const { term, treeNum } of kids) nodeByPath.set(treeNum, term);
   }
 
-  const hov = hovered ? f01Children.find(c => c.treeNum === hovered) : null;
+  const selectedRoot = selected?.slice(0, 3) || "F01";
+  const selectedLayer = LAYERS.find(l => l.treeNum === selectedRoot) || LAYERS[0];
+  const selectedInline = expandedByLayer[selectedRoot] || (selected === selectedRoot ? null : selected);
+  const selectedInlineTerm = selectedInline ? nodeByPath.get(selectedInline) : null;
+  const selectedInlineChildren = selectedInline
+    ? (childrenMap.get(selectedInline) || []).sort((a, b) =>
+        a.treeNum.localeCompare(b.treeNum, undefined, { numeric: true })
+      )
+    : [];
+  const selectedTerm = nodeByPath.get(selected) || byId.get(selectedLayer.treeNum)?.term;
+  const selectedChildren = (childrenMap.get(selected) || []).sort((a, b) =>
+    a.treeNum.localeCompare(b.treeNum, undefined, { numeric: true })
+  );
+
+  function countAll(treeNum) {
+    let n = 0;
+    const q = [treeNum];
+    while (q.length) {
+      const k = q.shift();
+      const kids = childrenMap.get(k) || [];
+      n += kids.length;
+      for (const c of kids) q.push(c.treeNum);
+    }
+    return n;
+  }
+
+  function collectVisibleDescendants(rootTreeNum, maxItems = 90, maxDepth = 4) {
+    const rows = [];
+    const walk = (treeNum, depth) => {
+      if (depth > maxDepth || rows.length >= maxItems) return;
+      const kids = (childrenMap.get(treeNum) || []).sort((a, b) =>
+        a.treeNum.localeCompare(b.treeNum, undefined, { numeric: true })
+      );
+      for (const child of kids) {
+        if (rows.length >= maxItems) break;
+        const grandCount = (childrenMap.get(child.treeNum) || []).length;
+        rows.push({ ...child, depth, grandCount });
+        if (grandCount > 0) walk(child.treeNum, depth + 1);
+      }
+    };
+    walk(rootTreeNum, 1);
+    return rows;
+  }
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      {/* Header */}
       <div style={{ padding: "16px 24px 12px", borderBottom: "1px solid #ffffff0a", flexShrink: 0 }}>
-        <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff33", letterSpacing: 2 }}>F01 · BEHAVIOR AND BEHAVIOR MECHANISMS</div>
+        <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff33", letterSpacing: 2 }}>F · PSYCHOLOGY AND PSYCHIATRY</div>
         <div style={{ fontFamily: mono, fontSize: 11, color: "#ffffffaa", marginTop: 2 }}>
-          Spectrum from primitive drives to complex social behavior
+          Mental health as a stack: behavior, mind, disorder, practice
         </div>
       </div>
 
-      <div style={{ flex: 1, padding: 24, overflowY: "auto", display: "flex", flexDirection: "column", gap: 24 }}>
-        {/* Spectrum axis labels */}
-        <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: 6, borderBottom: "1px solid #ffffff08" }}>
-          <div style={{ fontFamily: mono, fontSize: 8, color: "#9B72CF", letterSpacing: 2 }}>◀ PRIMITIVE / BASIC DRIVES</div>
-          <div style={{ fontFamily: mono, fontSize: 8, color: TREE_COLOR, letterSpacing: 2 }}>COMPLEX SOCIAL BEHAVIOR ▶</div>
+      <div style={{ flex: 1, display: "grid", gridTemplateColumns: "minmax(420px, 1fr) 340px", overflow: "hidden" }}>
+        <div style={{ padding: 22, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
+          {LAYERS.map((layer, idx) => {
+            const branch = byId.get(layer.treeNum);
+            const children = (childrenMap.get(layer.treeNum) || []).slice(0, 12);
+            const active = selectedRoot === layer.treeNum;
+            return (
+              <div
+                key={layer.treeNum}
+                style={{ display: "grid", gridTemplateColumns: "92px minmax(0, 1fr)", gap: 14, padding: 16, background: active ? layer.color + "16" : "#ffffff06", border: `1px solid ${active ? layer.color : "#ffffff0f"}`, borderRadius: 8 }}
+              >
+                <div style={{ borderRight: `1px solid ${layer.color}33`, paddingRight: 12 }}>
+                  <div style={{ fontFamily: mono, fontSize: 7, color: layer.color, letterSpacing: 2, marginBottom: 8 }}>LAYER {idx + 1}</div>
+                  <button
+                    onClick={() => { setSelected(layer.treeNum); setExpandedByLayer(prev => ({ ...prev, [layer.treeNum]: null })); }}
+                    style={{ display: "block", background: "transparent", border: "none", padding: 0, fontFamily: mono, fontSize: 17, color: layer.color, fontWeight: 700, cursor: "pointer", textAlign: "left" }}
+                  >
+                    {layer.treeNum}
+                  </button>
+                  <div style={{ fontFamily: mono, fontSize: 7, color: "#ffffff33", marginTop: 4 }}>{branch?.totalCount?.toLocaleString() || 0} terms</div>
+                </div>
+                <div>
+                  <button
+                    onClick={() => { setSelected(layer.treeNum); setExpandedByLayer(prev => ({ ...prev, [layer.treeNum]: null })); }}
+                    style={{ display: "block", background: "transparent", border: "none", padding: 0, fontFamily: mono, fontSize: 13, color: active ? "#fff" : "#ffffffd0", fontWeight: 600, cursor: "pointer", textAlign: "left" }}
+                  >
+                    {branch?.term.name || layer.label}
+                  </button>
+                  <div style={{ fontFamily: mono, fontSize: 8.5, color: "#ffffff55", lineHeight: 1.5, marginTop: 4 }}>
+                    {layer.label} · {layer.phrase}
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 10 }}>
+                    {children.map(({ term, treeNum }) => (
+                      <button
+                        key={treeNum}
+                        onClick={(e) => { e.stopPropagation(); setSelected(treeNum); setExpandedByLayer(prev => ({ ...prev, [layer.treeNum]: treeNum })); }}
+                        style={{ fontFamily: mono, fontSize: 7.5, color: selectedInline === treeNum ? "#fff" : layer.color + "dd", background: selectedInline === treeNum ? layer.color + "28" : layer.color + "12", border: `1px solid ${selectedInline === treeNum ? layer.color : layer.color + "2f"}`, borderRadius: 4, padding: "2px 6px", cursor: "pointer" }}
+                      >
+                        {term.name}
+                      </button>
+                    ))}
+                  </div>
+
+                  {active && selectedInline && (
+                    <div style={{ marginTop: 13, paddingTop: 12, borderTop: `1px solid ${layer.color}24` }}>
+                      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
+                        <div>
+                          <div style={{ fontFamily: mono, fontSize: 7, color: layer.color + "aa", letterSpacing: 1, marginBottom: 2 }}>{selectedInline}</div>
+                          <div style={{ fontFamily: mono, fontSize: 10, color: "#ffffffcc", fontWeight: 600 }}>{selectedInlineTerm?.name}</div>
+                        </div>
+                        <div style={{ fontFamily: mono, fontSize: 7, color: "#ffffff33", flexShrink: 0 }}>
+                          {selectedInlineChildren.length} child {selectedInlineChildren.length === 1 ? "term" : "terms"}
+                        </div>
+                      </div>
+
+                      {selectedInlineChildren.length === 0 ? (
+                        <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff35", lineHeight: 1.5 }}>
+                          No narrower terms in the current MeSH data.
+                        </div>
+                      ) : (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                          {collectVisibleDescendants(selectedInline).map(({ term, treeNum, depth, grandCount }) => (
+                            <button
+                              key={treeNum}
+                              onClick={(e) => { e.stopPropagation(); setSelected(treeNum); }}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 4,
+                                fontFamily: mono,
+                                fontSize: 7.2,
+                                color: selected === treeNum ? "#fff" : "#ffffffb8",
+                                background: selected === treeNum ? layer.color + "28" : layer.color + "0d",
+                                border: `1px solid ${selected === treeNum ? layer.color : layer.color + "22"}`,
+                                borderRadius: 12,
+                                padding: "3px 7px",
+                                cursor: "pointer",
+                                maxWidth: "100%",
+                              }}
+                            >
+                              <span style={{ color: layer.color + "aa", fontSize: 6.2 }}>L{depth}</span>
+                              <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{term.name}</span>
+                              {grandCount > 0 && <span style={{ color: "#ffffff30", fontSize: 6.5 }}>+{grandCount}</span>}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
 
-        {/* Ribbon of chips */}
-        {f01 ? (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-start" }}>
-            {f01Children.map(({ term, treeNum }, idx) => {
-              const color = spectrumColor(idx, f01Children.length);
-              const isHov = hovered === treeNum;
-              return (
-                <div
-                  key={treeNum}
-                  onMouseEnter={() => setHovered(treeNum)}
-                  onMouseLeave={() => setHovered(null)}
-                  style={{
-                    fontFamily: mono,
-                    fontSize: 9.5,
-                    color: isHov ? "#fff" : color,
-                    background: isHov ? color + "28" : color + "12",
-                    border: `1px solid ${isHov ? color : color + "55"}`,
-                    borderRadius: 20,
-                    padding: "6px 14px",
-                    cursor: "default",
-                    transition: "all 0.15s",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  <span style={{ fontSize: 7, opacity: 0.6, marginRight: 5 }}>{treeNum}</span>
-                  {term.name}
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div style={{ fontFamily: mono, fontSize: 9, color: "#ffffff33" }}>F01 branch not found</div>
-        )}
-
-        {/* Hover tooltip */}
-        <div style={{ minHeight: 60, padding: "12px 16px", background: "#ffffff06", border: `1px solid ${hov ? TREE_COLOR + "44" : "#ffffff0a"}`, borderRadius: 8, transition: "all 0.15s" }}>
-          {hov ? (
-            <>
-              <div style={{ fontFamily: mono, fontSize: 8, color: TREE_COLOR + "88", letterSpacing: 2, marginBottom: 4 }}>{hov.treeNum}</div>
-              <div style={{ fontFamily: mono, fontSize: 11, color: "#ffffffcc", fontWeight: 600 }}>{hov.term.name}</div>
-              {hov.term.scopeNote && (
-                <div style={{ fontFamily: mono, fontSize: 9, color: "#ffffff66", marginTop: 6, lineHeight: 1.6, fontStyle: "italic" }}>
-                  {hov.term.scopeNote.slice(0, 220)}{hov.term.scopeNote.length > 220 ? "…" : ""}
-                </div>
-              )}
-              <div style={{ fontFamily: mono, fontSize: 7.5, color: "#ffffff33", marginTop: 6, letterSpacing: 1 }}>
-                {(childrenMap.get(hov.treeNum) || []).length} sub-terms
-              </div>
-            </>
-          ) : (
-            <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff22" }}>Hover a chip to see scope note</div>
+        <aside style={{ borderLeft: "1px solid #ffffff0a", padding: 20, overflowY: "auto" }}>
+          <div style={{ fontFamily: mono, fontSize: 8, color: selectedLayer.color, letterSpacing: 2, marginBottom: 6 }}>{selected}</div>
+          <div style={{ fontFamily: mono, fontSize: 13, color: "#ffffffdd", fontWeight: 600, lineHeight: 1.35 }}>{selectedTerm?.name}</div>
+          <div style={{ fontFamily: mono, fontSize: 8.5, color: "#ffffff55", lineHeight: 1.55, marginTop: 8 }}>{selectedLayer.phrase}</div>
+          {selectedTerm?.note && (
+            <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff55", lineHeight: 1.55, background: "#ffffff06", border: "1px solid #ffffff10", borderRadius: 6, padding: 10, marginTop: 12 }}>
+              {selectedTerm.note}
+            </div>
           )}
-        </div>
-
-        {/* Divider */}
-        <div style={{ borderTop: "1px solid #ffffff0a", paddingTop: 16 }}>
-          <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff33", letterSpacing: 2, marginBottom: 12 }}>OTHER F BRANCHES</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-            {otherBranches.map(b => (
-              <div key={b.treeNum} style={{ padding: "10px 16px", background: "#ffffff06", border: "1px solid #ffffff0a", borderRadius: 8, minWidth: 180 }}>
-                <div style={{ fontFamily: mono, fontSize: 7, color: TREE_COLOR + "88", letterSpacing: 2, marginBottom: 3 }}>{b.treeNum}</div>
-                <div style={{ fontFamily: mono, fontSize: 10, color: "#ffffffaa", fontWeight: 600 }}>{b.term.name}</div>
-                <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff44", marginTop: 4 }}>{b.totalCount.toLocaleString()} terms</div>
-              </div>
-            ))}
+          <div style={{ fontFamily: mono, fontSize: 7.5, color: "#ffffff35", lineHeight: 1.6, marginTop: 14 }}>
+            Child terms are shown inline inside the active stack layer.
           </div>
-        </div>
+        </aside>
       </div>
     </div>
   );
@@ -427,16 +574,15 @@ function BehaviorSpectrum({ data }) {
 
 // ── APP ────────────────────────────────────────────────────────────────────
 const VIEWS = [
-  { id: "quadrant",  label: "1. Four Quadrants" },
+  { id: "stack",     label: "1. Mental Health Stack" },
   { id: "disorders", label: "2. Disorder Taxonomy" },
-  { id: "spectrum",  label: "3. Behavior Spectrum" },
 ];
 
 export default function MeshFConcepts() {
-  const [active, setActive] = useState("quadrant");
+  const [active, setActive] = useState("stack");
   const { data, loading } = useFData();
 
-  const views = { quadrant: FourQuadrants, disorders: DisorderTaxonomy, spectrum: BehaviorSpectrum };
+  const views = { stack: MentalHealthStack, disorders: DisorderTaxonomy };
   const Active = views[active];
 
   return (

@@ -1171,7 +1171,7 @@ function TreeSwitcher({ data }) {
 
   const pathSet = new Set(currentLineage.map(n => n.treeNum));
 
-  function PlacementDag({ paths }) {
+  function PlacementDag({ paths, orientation = "horizontal" }) {
     const CHIP_W = 126;
     const CHIP_H = 26;
     const GAP_X = 32;
@@ -1184,11 +1184,23 @@ function TreeSwitcher({ data }) {
       nodes: lineage(path).slice(0, -1),
     })).sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }));
 
-    const sinkName = currentTerm?.name || "selected descriptor";
     const maxDepth = Math.max(...chains.map(c => c.nodes.length), 1);
-    const sinkX = LEFT + maxDepth * (CHIP_W + GAP_X) + SINK_GAP;
-    const sinkY = TOP + ((chains.length - 1) * ROW_H) / 2;
-    const height = TOP * 2 + Math.max(chains.length, 1) * ROW_H;
+    const sinkName = currentTerm?.name || "selected descriptor";
+    const isVertical = orientation === "vertical";
+    const depthGap = isVertical ? 54 : CHIP_W + GAP_X;
+    const laneGap = isVertical ? 148 : ROW_H;
+    const sinkX = isVertical
+      ? LEFT + ((chains.length - 1) * laneGap) / 2
+      : LEFT + maxDepth * depthGap + SINK_GAP;
+    const sinkY = isVertical
+      ? TOP + maxDepth * depthGap + SINK_GAP
+      : TOP + ((chains.length - 1) * laneGap) / 2;
+    const baseWidth = isVertical
+      ? LEFT * 2 + Math.max(chains.length, 1) * laneGap
+      : sinkX + CHIP_W + LEFT;
+    const baseHeight = isVertical
+      ? sinkY + CHIP_H + TOP
+      : TOP * 2 + Math.max(chains.length, 1) * laneGap;
     const mergedNodes = new Map();
     const connectors = [];
 
@@ -1201,15 +1213,16 @@ function TreeSwitcher({ data }) {
       const key = nodeKey(node);
       const term = nodeByPath.get(node.treeNum);
       const existing = mergedNodes.get(key);
-      const x = LEFT + depth * (CHIP_W + GAP_X);
-      const y = TOP + row * ROW_H;
+      const x = isVertical ? LEFT + row * laneGap : LEFT + depth * depthGap;
+      const y = isVertical ? TOP + depth * depthGap : TOP + row * laneGap;
       if (existing) {
         existing.depth = Math.max(existing.depth, depth);
         existing.rows.push(row);
         existing.paths.add(path);
         existing.treeNums.add(node.treeNum);
-        existing.x = LEFT + existing.depth * (CHIP_W + GAP_X);
-        existing.y = TOP + (existing.rows.reduce((sum, r) => sum + r, 0) / existing.rows.length) * ROW_H;
+        const avgRow = existing.rows.reduce((sum, r) => sum + r, 0) / existing.rows.length;
+        existing.x = isVertical ? LEFT + avgRow * laneGap : LEFT + existing.depth * depthGap;
+        existing.y = isVertical ? TOP + existing.depth * depthGap : TOP + avgRow * laneGap;
         return existing;
       }
       const record = {
@@ -1255,7 +1268,9 @@ function TreeSwitcher({ data }) {
     );
 
     for (const node of visibleNodes) {
-      node.x = LEFT + node.depth * (CHIP_W + GAP_X);
+      const avgRow = node.rows.reduce((sum, r) => sum + r, 0) / node.rows.length;
+      node.x = isVertical ? LEFT + avgRow * laneGap : LEFT + node.depth * depthGap;
+      node.y = isVertical ? TOP + node.depth * depthGap : TOP + avgRow * laneGap;
     }
 
     for (const c of uniqueConnectors) {
@@ -1267,23 +1282,27 @@ function TreeSwitcher({ data }) {
 
     const maxNodeX = Math.max(sinkX, ...visibleNodes.map(n => n.x));
     const maxNodeY = Math.max(sinkY, ...visibleNodes.map(n => n.y));
-    const svgWidth = maxNodeX + CHIP_W + LEFT;
-    const svgHeight = Math.max(height, maxNodeY + CHIP_H + TOP);
+    const svgWidth = Math.max(baseWidth, maxNodeX + CHIP_W + LEFT);
+    const svgHeight = Math.max(baseHeight, maxNodeY + CHIP_H + TOP);
 
     return (
-      <div style={{ overflowX: "auto", overflowY: "hidden", paddingBottom: 6 }}>
+      <div style={{ overflowX: "auto", overflowY: "hidden", paddingBottom: 6, maxHeight: isVertical ? 520 : "none" }}>
         <svg width={svgWidth} height={svgHeight} style={{ display: "block", minWidth: "100%" }}>
           <g>
             {drawableConnectors.map(edge => {
-              const sx = edge.from.x + CHIP_W;
-              const sy = edge.from.y + CHIP_H / 2;
-              const tx = edge.to.x;
-              const ty = edge.to.y + CHIP_H / 2;
-              const elbow = sx + Math.max(16, (tx - sx) / 2);
+              const sx = isVertical ? edge.from.x + CHIP_W / 2 : edge.from.x + CHIP_W;
+              const sy = isVertical ? edge.from.y + CHIP_H : edge.from.y + CHIP_H / 2;
+              const tx = isVertical ? edge.to.x + CHIP_W / 2 : edge.to.x;
+              const ty = isVertical ? edge.to.y : edge.to.y + CHIP_H / 2;
+              const elbow = isVertical
+                ? sy + Math.max(16, (ty - sy) / 2)
+                : sx + Math.max(16, (tx - sx) / 2);
               return (
                 <path
                   key={edge.key}
-                  d={`M ${sx} ${sy} H ${elbow} V ${ty} H ${tx}`}
+                  d={isVertical
+                    ? `M ${sx} ${sy} V ${elbow} H ${tx} V ${ty}`
+                    : `M ${sx} ${sy} H ${elbow} V ${ty} H ${tx}`}
                   fill="none"
                   stroke="#ffffff24"
                   strokeWidth="1.2"
@@ -1416,9 +1435,49 @@ function TreeSwitcher({ data }) {
         </section>
 
         <section style={{ marginBottom: 14 }}>
-          <div style={{ fontFamily: mono, fontSize: 7, color: "#ffffff25", letterSpacing: 2, marginBottom: 8 }}>PLACEMENT GRAPH</div>
+          <div style={{ fontFamily: mono, fontSize: 7, color: "#ffffff25", letterSpacing: 2, marginBottom: 8 }}>PLACEMENT GRAPH · LEFT TO RIGHT</div>
           <div style={{ background: "#ffffff04", border: "1px solid #ffffff0d", borderRadius: 7, padding: "10px 11px" }}>
-            <PlacementDag paths={siblingPlacements.length ? siblingPlacements : [currentPath]} />
+            <PlacementDag paths={siblingPlacements.length ? siblingPlacements : [currentPath]} orientation="horizontal" />
+          </div>
+        </section>
+
+        <section style={{ marginBottom: 14 }}>
+          <div style={{ fontFamily: mono, fontSize: 7, color: "#ffffff25", letterSpacing: 2, marginBottom: 8 }}>PLACEMENT GRAPH · TOP TO BOTTOM</div>
+          <div style={{ background: "#ffffff04", border: "1px solid #ffffff0d", borderRadius: 7, padding: "10px 11px" }}>
+            <PlacementDag paths={siblingPlacements.length ? siblingPlacements : [currentPath]} orientation="vertical" />
+          </div>
+        </section>
+
+        <section style={{ marginBottom: 14 }}>
+          <div style={{ fontFamily: mono, fontSize: 7, color: "#ffffff25", letterSpacing: 2, marginBottom: 8 }}>DEBUG · SOURCE PATHS</div>
+          <div style={{ display: "grid", gap: 7, background: "#ffffff04", border: "1px solid #ffffff0d", borderRadius: 7, padding: "10px 11px", fontFamily: mono }}>
+            {(siblingPlacements.length ? siblingPlacements : [currentPath]).map(path => {
+              const chain = lineage(path);
+              const color = chemColor(path.slice(0, 3));
+              return (
+                <div key={path} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 5 }}>
+                  {chain.map((node, i) => {
+                    const isLeaf = i === chain.length - 1;
+                    return (
+                      <span key={node.treeNum} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                        <span style={{
+                          padding: "3px 6px",
+                          borderRadius: 4,
+                          background: isLeaf ? TREE_COLOR + "1e" : "#ffffff08",
+                          border: `1px solid ${isLeaf ? TREE_COLOR + "66" : "#ffffff12"}`,
+                          color: isLeaf ? "#fff" : "#ffffff9a",
+                          fontSize: isLeaf ? 8.2 : 7.6,
+                        }}>
+                          {node.name}
+                        </span>
+                        {!isLeaf && <span style={{ color: "#ffffff22", fontSize: 8 }}>/</span>}
+                      </span>
+                    );
+                  })}
+                  <span style={{ color, fontSize: 7, marginLeft: 4 }}>{path}</span>
+                </div>
+              );
+            })}
           </div>
         </section>
 
