@@ -133,7 +133,13 @@ function App() {
       </nav>
 
       {active.kind === "top" && active.id === "meshtrees" && (
-        <MeshCosmos onNamedGroups={() => setActive({ kind: "top", id: "swimlanes" })} />
+        <MeshCosmos
+          onNamedGroups={() => setActive({ kind: "top", id: "swimlanes" })}
+          onPsychology={() => setActive({ kind: "concept", id: "f" })}
+          onGeography={() => setActive({ kind: "concept", id: "z" })}
+          onPublications={() => setActive({ kind: "concept", id: "v" })}
+          onDiseases={() => setActive({ kind: "concept", id: "c" })}
+        />
       )}
       {active.kind === "top" && active.id === "swimlanes" && <SwimLanes />}
       {active.kind === "concept" && (() => {

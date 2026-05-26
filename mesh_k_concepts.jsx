@@ -81,6 +81,228 @@ function branchColor(treeNum, branches) {
   return BRANCH_COLORS[idx % BRANCH_COLORS.length] ?? TREE_COLOR;
 }
 
+function HumanitiesTree({ data }) {
+  const { childrenMap } = data;
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedTag, setSelectedTag] = useState(null);
+  const [expandedNodes, setExpandedNodes] = useState([]);
+
+  const treeIndex = new Map();
+  for (const entries of childrenMap.values()) {
+    for (const entry of entries) treeIndex.set(entry.treeNum, entry);
+  }
+
+  function getChildren(treeNum) {
+    return (childrenMap.get(treeNum) || []).sort((a, b) =>
+      a.treeNum.localeCompare(b.treeNum, undefined, { numeric: true })
+    );
+  }
+
+  function countAll(treeNum) {
+    let n = 0;
+    const q = [treeNum];
+    while (q.length) {
+      const kids = getChildren(q.shift());
+      n += kids.length;
+      for (const kid of kids) q.push(kid.treeNum);
+    }
+    return n;
+  }
+
+  function isExpanded(treeNum) {
+    return expandedNodes.includes(treeNum);
+  }
+
+  function toggleExpanded(treeNum) {
+    const dot = treeNum.lastIndexOf(".");
+    const parentTreeNum = dot === -1 ? treeNum[0] : treeNum.slice(0, dot);
+    const siblingTreeNums = getChildren(parentTreeNum)
+      .map(({ treeNum: siblingTreeNum }) => siblingTreeNum)
+      .filter(siblingTreeNum => siblingTreeNum !== treeNum);
+
+    setExpandedNodes(nodes => {
+      if (nodes.includes(treeNum)) {
+        return nodes.filter(n => n !== treeNum && !n.startsWith(treeNum + "."));
+      }
+
+      return [
+        ...nodes.filter(n =>
+          !siblingTreeNums.some(siblingTreeNum =>
+            n === siblingTreeNum || n.startsWith(siblingTreeNum + ".")
+          )
+        ),
+        treeNum,
+      ];
+    });
+  }
+
+  const categories = getChildren("K01");
+  const activeEntry = selectedTag ? treeIndex.get(selectedTag) : selectedCategory ? treeIndex.get(selectedCategory) : null;
+  const activeChildren = activeEntry ? getChildren(activeEntry.treeNum) : [];
+  const activeColor = activeEntry ? branchColor(activeEntry.treeNum, categories.map(c => ({ treeNum: c.treeNum }))) : TREE_COLOR;
+
+  function renderDetail(color) {
+    if (!activeEntry) {
+      return (
+        <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff30", padding: "8px 10px", border: "1px dashed #ffffff12", borderRadius: 6 }}>
+          Select a category or tag to see details.
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ marginBottom: 12, padding: 12, background: "#ffffff06", border: `1px solid ${color + "2f"}`, borderRadius: 8 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontFamily: mono, fontSize: 7, color: color + "aa", letterSpacing: 1.5, marginBottom: 3 }}>
+              SELECTED TERM
+            </div>
+            <div style={{ fontFamily: mono, fontSize: 13, color: "#ffffffdd", fontWeight: 700, lineHeight: 1.25 }}>
+              {activeEntry.term.name}
+            </div>
+          </div>
+          <div style={{ fontFamily: mono, fontSize: 8, color, whiteSpace: "nowrap" }}>
+            {activeChildren.length === 0 ? "leaf" : `${activeChildren.length} children`}
+          </div>
+        </div>
+        {activeEntry.term.note && (
+          <div style={{ fontFamily: mono, fontSize: 9, color: "#ffffff70", lineHeight: 1.55, marginTop: 9, maxWidth: 980 }}>
+            {activeEntry.term.note}
+          </div>
+        )}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10, fontFamily: mono, fontSize: 7.5, color: "#ffffff42" }}>
+          <span>{activeEntry.term.ui}</span>
+          {activeEntry.term.treeNums.filter(tn => tn.startsWith("K")).length > 1 && (
+            <span>{activeEntry.term.treeNums.filter(tn => tn.startsWith("K")).length} K placements</span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  function renderTags(parentTreeNum, color, depth = 0) {
+    const children = getChildren(parentTreeNum);
+    if (children.length === 0) {
+      return <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff30" }}>No child terms.</div>;
+    }
+
+    return children.map(({ term, treeNum }) => {
+      const kids = getChildren(treeNum);
+      const hasChildren = kids.length > 0;
+      const open = isExpanded(treeNum);
+      const active = selectedTag === treeNum;
+      return (
+        <div key={treeNum} style={{ display: "contents" }}>
+          <button
+            type="button"
+            title={treeNum}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedTag(active ? null : treeNum);
+              if (hasChildren) toggleExpanded(treeNum);
+            }}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              minHeight: 22,
+              width: "fit-content",
+              maxWidth: "100%",
+              padding: "4px 8px",
+              background: active ? color + "30" : open ? color + "22" : color + "11",
+              border: `1px solid ${active || open ? color + "88" : color + "30"}`,
+              borderRadius: 999,
+              cursor: "pointer",
+              fontFamily: mono,
+              fontSize: 8,
+              color: active ? "#fff" : "#ffffffb8",
+            }}
+          >
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{term.name}</span>
+            {hasChildren && <span style={{ color: color + "77", fontSize: 7 }}>{kids.length}</span>}
+          </button>
+          {open && (
+            <div style={{
+              flexBasis: "100%",
+              marginTop: 3,
+              marginLeft: Math.min(10 + depth * 8, 34),
+              padding: "4px 0 2px 10px",
+              borderLeft: `1px solid ${color + "28"}`,
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "flex-start",
+              gap: 4,
+            }}>
+              {renderTags(treeNum, color, depth + 1)}
+            </div>
+          )}
+        </div>
+      );
+    });
+  }
+
+  return (
+    <div style={{ height: "100%", overflowY: "auto", padding: 24 }}>
+      <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff33", letterSpacing: 2, marginBottom: 16 }}>
+        HUMANITIES — TOPICS, WORKS, BELIEF SYSTEMS, AND INTERPRETIVE DOMAINS
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 8, marginBottom: 14 }}>
+        {categories.map((entry, i) => {
+          const color = BRANCH_COLORS[i % BRANCH_COLORS.length];
+          const active = selectedCategory === entry.treeNum;
+          const direct = getChildren(entry.treeNum).length;
+          const total = countAll(entry.treeNum);
+          return (
+            <button
+              key={entry.treeNum}
+              type="button"
+              onClick={() => {
+                setSelectedCategory(active ? null : entry.treeNum);
+                setSelectedTag(null);
+                setExpandedNodes([]);
+              }}
+              style={{
+                textAlign: "left",
+                minHeight: 68,
+                padding: "10px 12px",
+                background: active ? color + "20" : color + "0d",
+                border: `1px solid ${active ? color + "88" : color + "2e"}`,
+                borderRadius: 7,
+                cursor: "pointer",
+                fontFamily: mono,
+                transition: "background 0.15s, border-color 0.15s",
+              }}
+            >
+              <div style={{ fontSize: 10, color: active ? "#fff" : color, fontWeight: 700, lineHeight: 1.3 }}>
+                {entry.term.name}
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 7, fontSize: 7.5, color: "#ffffff45" }}>
+                <span>{direct} direct</span>
+                <span>{total} total</span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {selectedCategory && (
+        <div style={{
+          padding: 12,
+          background: activeColor + "08",
+          border: `1px solid ${activeColor + "24"}`,
+          borderRadius: 8,
+        }}>
+          {renderDetail(activeColor)}
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 4 }}>
+            {renderTags(selectedCategory, activeColor)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // SKETCH 1 — TAG CLOUD (all K terms, top 2 levels)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -281,18 +503,8 @@ function BranchCards({ data }) {
   );
 }
 
-// ── APP ────────────────────────────────────────────────────────────────────
-const VIEWS = [
-  { id: "cloud",   label: "1. All Terms" },
-  { id: "cards",   label: "2. Branch Cards" },
-];
-
 export default function MeshKConcepts() {
-  const [active, setActive] = useState("cloud");
   const { data, loading } = useKData();
-
-  const views = { cloud: TagCloud, cards: BranchCards };
-  const Active = views[active];
 
   return (
     <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: BG }}>
@@ -300,28 +512,15 @@ export default function MeshKConcepts() {
 
       <nav style={{ display: "flex", alignItems: "center", gap: 0, borderBottom: "2px solid #ffffff12", flexShrink: 0, background: "#0a0c10", overflowX: "auto" }}>
         <div style={{ padding: "12px 20px", fontFamily: mono, fontSize: 9, color: "#ffffff33", letterSpacing: 2, flexShrink: 0 }}>
-          K CONCEPTS
+          K · HUMANITIES
         </div>
-        {VIEWS.map(v => (
-          <button
-            key={v.id}
-            onClick={() => setActive(v.id)}
-            style={{
-              padding: "12px 18px", fontFamily: mono, fontSize: 10,
-              background: "transparent", border: "none",
-              borderBottom: active === v.id ? `2px solid ${TREE_COLOR}` : "2px solid transparent",
-              marginBottom: "-2px",
-              color: active === v.id ? TREE_COLOR : "#ffffff44",
-              cursor: "pointer", flexShrink: 0, transition: "all 0.15s",
-            }}
-          >
-            {v.label}
-          </button>
-        ))}
+        <div style={{ padding: "12px 18px", fontFamily: mono, fontSize: 10, color: TREE_COLOR, borderBottom: `2px solid ${TREE_COLOR}`, marginBottom: "-2px", flexShrink: 0 }}>
+          Humanities Map
+        </div>
       </nav>
 
       <div style={{ flex: 1, overflow: "hidden" }}>
-        {loading ? <Loading /> : <Active data={data} />}
+        {loading ? <Loading /> : <HumanitiesTree data={data} />}
       </div>
     </div>
   );

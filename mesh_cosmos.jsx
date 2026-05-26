@@ -328,18 +328,19 @@ function GalaxyView({ onSelect, meshData }) {
                 </div>
               </div>
 
-              {isHov && (
-                <div style={{
-                  fontFamily: "'IBM Plex Mono',monospace",
-                  fontSize: 9, color: tree.color + "cc",
-                  lineHeight: 1.5,
-                  borderTop: `1px solid ${tree.color}22`,
-                  paddingTop: 8,
-                  animation: "fadeIn 0.15s ease",
-                }}>
-                  {tree.character}
-                </div>
-              )}
+              <div style={{
+                fontFamily: "'IBM Plex Mono',monospace",
+                fontSize: 9,
+                color: tree.color + "cc",
+                lineHeight: 1.5,
+                borderTop: `1px solid ${isHov ? tree.color + "22" : "transparent"}`,
+                paddingTop: 8,
+                minHeight: 48,
+                opacity: isHov ? 1 : 0,
+                transition: "opacity 0.15s ease, border-color 0.15s ease",
+              }}>
+                {tree.character}
+              </div>
 
               <div style={{
                 fontFamily: "'IBM Plex Mono',monospace", fontSize: 8,
@@ -627,7 +628,7 @@ function SurfaceView({ tree, branch, onBack, onBackToPlanet, meshData }) {
 }
 
 // ── APP ────────────────────────────────────────────────────────────────────
-export default function MeshCosmos({ onNamedGroups }) {
+export default function MeshCosmos({ onNamedGroups, onPsychology, onGeography, onPublications, onDiseases }) {
   const [view, setView] = useState("galaxy");
   const [selectedTree, setSelectedTree] = useState(null);
   const [selectedBranch, setSelectedBranch] = useState(null);
@@ -637,6 +638,14 @@ export default function MeshCosmos({ onNamedGroups }) {
   function handleSelect(tree) {
     if (tree.id === "M" && onNamedGroups) {
       onNamedGroups();
+    } else if (tree.id === "F" && onPsychology) {
+      onPsychology();
+    } else if (tree.id === "Z" && onGeography) {
+      onGeography();
+    } else if (tree.id === "V" && onPublications) {
+      onPublications();
+    } else if (tree.id === "C" && onDiseases) {
+      onDiseases();
     } else {
       setSelectedTree(tree);
       setView("planet");

@@ -97,15 +97,12 @@ function DocIcon({ color }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SKETCH 1 — PUBLICATION TYPES (Format + Study Design columns)
+// SKETCH 1 — OUTLINE BOARD
+// Four compact columns, preserving hierarchy while keeping the whole tree visible.
 // ═══════════════════════════════════════════════════════════════════════════
-function PubTypes({ data }) {
+function OutlineBoard({ data }) {
   const { childrenMap, branches } = data;
   const [selected, setSelected] = useState(null);
-
-  // Get V02 (Publication Formats) and V03 (Study Characteristics)
-  const v02Branch = branches.find(b => b.treeNum === "V02");
-  const v03Branch = branches.find(b => b.treeNum === "V03");
 
   function getChildren(treeNum) {
     return (childrenMap.get(treeNum) || []).sort((a, b) =>
@@ -113,127 +110,114 @@ function PubTypes({ data }) {
     );
   }
 
-  const formatTerms = v02Branch ? getChildren("V02") : [];
-  const studyTerms = v03Branch ? getChildren("V03") : [];
+  function countAll(treeNum) {
+    let n = 0;
+    const q = [...getChildren(treeNum)];
+    while (q.length) {
+      const item = q.shift();
+      n += 1;
+      q.push(...getChildren(item.treeNum));
+    }
+    return n;
+  }
 
-  const selInfo = selected
-    ? { ...selected, children: getChildren(selected.treeNum) }
-    : null;
-
-  function TermCard({ term, treeNum, colColor }) {
-    const isSel = selected?.treeNum === treeNum;
-    const childCount = childrenMap.get(treeNum)?.length ?? 0;
+  function renderNode(item, depth, color) {
+    const kids = getChildren(item.treeNum);
+    const isSel = selected?.treeNum === item.treeNum;
     return (
-      <div
-        onClick={() => setSelected(isSel ? null : { term, treeNum })}
-        style={{
-          display: "flex", alignItems: "center", gap: 10,
-          padding: "8px 12px",
-          background: isSel ? colColor + "18" : "#ffffff06",
-          border: `1px solid ${isSel ? colColor + "77" : "#ffffff0e"}`,
-          borderRadius: 7, cursor: "pointer", transition: "all 0.12s",
-        }}
-      >
-        <DocIcon color={colColor} />
-        <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: mono, fontSize: 9.5, color: isSel ? colColor : colColor + "bb", lineHeight: 1.3 }}>
-            {term.name}
-          </div>
-          <div style={{ fontFamily: mono, fontSize: 7, color: "#ffffff22", marginTop: 2 }}>
-            {treeNum}{childCount > 0 ? ` · ${childCount} subtypes` : ""}
-          </div>
-        </div>
+      <div key={item.treeNum}>
+        <button
+          onClick={() => setSelected({ ...item, children: kids })}
+          style={{
+            width: "100%",
+            display: "grid",
+            gridTemplateColumns: "48px 1fr auto",
+            alignItems: "baseline",
+            gap: 6,
+            padding: "4px 7px",
+            paddingLeft: 7 + depth * 12,
+            background: isSel ? color + "22" : depth === 0 ? color + "0f" : "transparent",
+            border: `1px solid ${isSel ? color + "88" : "transparent"}`,
+            borderLeft: `2px solid ${kids.length ? color + "77" : "#ffffff14"}`,
+            borderRadius: 4,
+            color: isSel ? "#fff" : "#d8d8d8",
+            cursor: "pointer",
+            textAlign: "left",
+            fontFamily: mono,
+            fontSize: depth === 0 ? 8.3 : 7.8,
+            lineHeight: 1.25,
+          }}
+        >
+          <span style={{ color, fontSize: 7.4 }}>{item.treeNum}</span>
+          <span>{item.term.name}</span>
+          {kids.length > 0 && <span style={{ color: "#ffffff33", fontSize: 7 }}>+{kids.length}</span>}
+        </button>
+        {kids.length > 0 && kids.map(kid => renderNode(kid, depth + 1, color))}
       </div>
     );
   }
 
+  const detail = selected || branches[1];
+  const detailChildren = detail ? getChildren(detail.treeNum) : [];
+
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", overflowY: "auto" }}>
-      <div style={{ padding: "20px 24px 0", fontFamily: mono, fontSize: 9, color: "#ffffff22", letterSpacing: 2 }}>
-        V · PUBLICATION CHARACTERISTICS — BIBLIOGRAPHIC CATEGORIES
-      </div>
-
-      {/* Two columns */}
-      <div style={{ display: "flex", gap: 20, padding: 24, flex: 1, minHeight: 0 }}>
-        {/* FORMAT column */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{
-            fontFamily: mono, fontSize: 8, letterSpacing: 2,
-            color: BRANCH_CFG["V02"].color, paddingBottom: 8,
-            borderBottom: `1px solid ${BRANCH_CFG["V02"].color}33`,
-          }}>
-            ▣ FORMAT &amp; TYPE (V02)
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, overflowY: "auto" }}>
-            {formatTerms.map(({ term, treeNum }) => (
-              <TermCard key={treeNum} term={term} treeNum={treeNum} colColor={BRANCH_CFG["V02"].color} />
-            ))}
-            {formatTerms.length === 0 && (
-              <div style={{ fontFamily: mono, fontSize: 9, color: "#ffffff22", textAlign: "center", paddingTop: 20 }}>
-                V02 not found in data
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Divider */}
-        <div style={{ width: 1, background: "#ffffff0a", flexShrink: 0 }} />
-
-        {/* STUDY DESIGN column */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{
-            fontFamily: mono, fontSize: 8, letterSpacing: 2,
-            color: BRANCH_CFG["V03"].color, paddingBottom: 8,
-            borderBottom: `1px solid ${BRANCH_CFG["V03"].color}33`,
-          }}>
-            ⊞ STUDY DESIGN (V03)
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, overflowY: "auto" }}>
-            {studyTerms.map(({ term, treeNum }) => (
-              <TermCard key={treeNum} term={term} treeNum={treeNum} colColor={BRANCH_CFG["V03"].color} />
-            ))}
-            {studyTerms.length === 0 && (
-              <div style={{ fontFamily: mono, fontSize: 9, color: "#ffffff22", textAlign: "center", paddingTop: 20 }}>
-                V03 not found in data
-              </div>
-            )}
-          </div>
+    <div style={{ height: "100%", display: "grid", gridTemplateRows: "auto 1fr auto", overflow: "hidden" }}>
+      <div style={{ padding: "18px 24px 12px", borderBottom: "1px solid #ffffff0e" }}>
+        <div style={{ fontFamily: mono, fontSize: 9, color: TREE_COLOR, letterSpacing: 3, marginBottom: 4 }}>V · PUBLICATION CHARACTERISTICS</div>
+        <div style={{ fontFamily: mono, fontSize: 14, color: "#e8e8e8", fontWeight: 700 }}>Outline Board</div>
+        <div style={{ fontFamily: mono, fontSize: 9, color: "#ffffff44", marginTop: 3 }}>
+          Four shallow branches, shown as dense local hierarchies.
         </div>
       </div>
 
-      {/* Detail strip */}
-      {selInfo && (
-        <div style={{
-          flexShrink: 0,
-          margin: "0 24px 24px",
-          padding: 16,
-          background: "#ffffff08",
-          border: `1px solid ${TREE_COLOR}33`,
-          borderRadius: 8,
-        }}>
-          <div style={{ fontFamily: mono, fontSize: 11, color: TREE_COLOR, fontWeight: 600, marginBottom: 6 }}>
-            {selInfo.term.name}
-          </div>
-          {selInfo.term.note && (
-            <div style={{ fontFamily: mono, fontSize: 8.5, color: "#ffffff44", lineHeight: 1.7, marginBottom: 10 }}>
-              {selInfo.term.note}
-            </div>
-          )}
-          {selInfo.children.length > 0 && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-              {selInfo.children.map(({ term: ct, treeNum: ctn }) => (
-                <div key={ctn} style={{
-                  padding: "3px 8px",
-                  background: TREE_COLOR + "14", border: `1px solid ${TREE_COLOR}33`,
-                  borderRadius: 12, fontFamily: mono, fontSize: 8, color: TREE_COLOR + "cc",
-                }}>
-                  {ct.name}
+      <div style={{ overflow: "auto", padding: "14px 18px", display: "grid", gridTemplateColumns: "repeat(4, minmax(220px, 1fr))", gap: 10 }}>
+        {branches.map(branch => {
+          const cfg = branch.cfg || branchCfg(branch.treeNum);
+          return (
+            <section key={branch.treeNum} style={{ minWidth: 0, border: `1px solid ${cfg.color}22`, borderRadius: 7, background: "#ffffff04", overflow: "hidden" }}>
+              <div style={{ padding: "9px 10px", borderBottom: `1px solid ${cfg.color}22`, background: cfg.color + "0c" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                  <span style={{ color: cfg.color, fontFamily: mono, fontSize: 12 }}>{cfg.icon}</span>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontFamily: mono, fontSize: 8, color: cfg.color, letterSpacing: 1.4 }}>{branch.treeNum}</div>
+                    <div style={{ fontFamily: mono, fontSize: 9.2, color: "#e8e8e8", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{cfg.label}</div>
+                  </div>
+                  <div style={{ marginLeft: "auto", fontFamily: mono, fontSize: 7, color: "#ffffff33" }}>{branch.totalCount}</div>
                 </div>
-              ))}
+              </div>
+              <div style={{ padding: 7 }}>
+                {getChildren(branch.treeNum).map(item => renderNode(item, 0, cfg.color))}
+              </div>
+            </section>
+          );
+        })}
+      </div>
+
+      <div style={{ margin: "0 18px 16px", padding: "10px 14px", border: `1px solid ${detail ? branchCfg(detail.treeNum).color + "44" : "#ffffff10"}`, borderRadius: 7, background: "#ffffff08", fontFamily: mono, flexShrink: 0 }}>
+        {detail && (
+          <>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4 }}>
+              <span style={{ color: branchCfg(detail.treeNum).color, fontSize: 8 }}>{detail.treeNum}</span>
+              <span style={{ color: "#e8e8e8", fontSize: 11, fontWeight: 700 }}>{detail.term.name}</span>
+              <span style={{ color: "#ffffff33", fontSize: 8 }}>{countAll(detail.treeNum)} descendants</span>
             </div>
-          )}
-        </div>
-      )}
+            {detail.term.note && (
+              <div style={{ color: "#ffffff55", fontSize: 8.5, lineHeight: 1.55, marginBottom: detailChildren.length ? 8 : 0 }}>
+                {detail.term.note}
+              </div>
+            )}
+            {detailChildren.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                {detailChildren.map(({ term, treeNum }) => (
+                  <span key={treeNum} style={{ padding: "3px 7px", borderRadius: 4, border: `1px solid ${branchCfg(detail.treeNum).color}2f`, background: branchCfg(detail.treeNum).color + "10", color: branchCfg(detail.treeNum).color + "cc", fontSize: 7.5 }}>
+                    {term.name}
+                  </span>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -245,6 +229,7 @@ function AllTermsV({ data }) {
   const { allTerms, branches } = data;
   const [filter, setFilter] = useState("");
   const [hovered, setHovered] = useState(null);
+  const [selected, setSelected] = useState(null);
 
   const filtered = allTerms.filter(t =>
     !filter || t.term.name.toLowerCase().includes(filter.toLowerCase())
@@ -258,7 +243,9 @@ function AllTermsV({ data }) {
     groups[topKey].push(item);
   }
 
-  const hovItem = hovered ? allTerms.find(t => t.treeNum === hovered) : null;
+  const selectedItem = selected ? allTerms.find(t => t.treeNum === selected) : null;
+  const hoveredItem = hovered ? allTerms.find(t => t.treeNum === hovered) : null;
+  const detailItem = selectedItem || hoveredItem;
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: 24, gap: 16, overflowY: "auto" }}>
@@ -278,32 +265,36 @@ function AllTermsV({ data }) {
         </div>
       </div>
 
-      {/* Branch legend */}
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-        {Object.entries(BRANCH_CFG).map(([key, cfg]) => (
-          <div key={key} style={{ display: "flex", alignItems: "center", gap: 5 }}>
-            <div style={{ width: 8, height: 8, borderRadius: 2, background: cfg.color }} />
-            <span style={{ fontFamily: mono, fontSize: 8, color: "#ffffff44" }}>{key}</span>
-            <span style={{ fontFamily: mono, fontSize: 7.5, color: "#ffffff22" }}>{cfg.label}</span>
-          </div>
-        ))}
-      </div>
-
-      {hovItem && (
-        <div style={{
-          padding: "10px 14px", background: "#ffffff0a",
-          border: `1px solid ${branchCfg(hovItem.treeNum).color}44`,
-          borderRadius: 8, fontFamily: mono, fontSize: 9, color: "#ffffffbb",
-        }}>
-          <div style={{ color: branchCfg(hovItem.treeNum).color, fontSize: 10, marginBottom: 4 }}>{hovItem.term.name}</div>
-          <div style={{ color: "#ffffff44", marginBottom: hovItem.term.note ? 6 : 0 }}>{hovItem.treeNum}</div>
-          {hovItem.term.note && (
-            <div style={{ color: "#ffffff55", lineHeight: 1.6 }}>
-              {hovItem.term.note.slice(0, 200)}{hovItem.term.note.length > 200 ? "…" : ""}
+      <div style={{
+        minHeight: 86,
+        padding: "10px 14px",
+        background: "#ffffff0a",
+        border: `1px solid ${detailItem ? branchCfg(detailItem.treeNum).color + "44" : "#ffffff10"}`,
+        borderRadius: 8,
+        fontFamily: mono,
+        fontSize: 9,
+        color: "#ffffffbb",
+        flexShrink: 0,
+      }}>
+        {detailItem ? (
+          <>
+            <div style={{ color: branchCfg(detailItem.treeNum).color, fontSize: 10, marginBottom: 4 }}>
+              {detailItem.term.name}
+              {selectedItem && <span style={{ color: "#ffffff33", marginLeft: 8, fontSize: 8 }}>selected</span>}
             </div>
-          )}
-        </div>
-      )}
+            <div style={{ color: "#ffffff44", marginBottom: detailItem.term.note ? 6 : 0 }}>{detailItem.treeNum}</div>
+            {detailItem.term.note && (
+              <div style={{ color: "#ffffff55", lineHeight: 1.6 }}>
+                {detailItem.term.note.slice(0, 200)}{detailItem.term.note.length > 200 ? "…" : ""}
+              </div>
+            )}
+          </>
+        ) : (
+          <div style={{ color: "#ffffff2d", height: "100%", display: "flex", alignItems: "center" }}>
+            hover a term to inspect
+          </div>
+        )}
+      </div>
 
       {/* Groups */}
       {Object.entries(groups).sort().map(([topKey, items]) => {
@@ -323,26 +314,29 @@ function AllTermsV({ data }) {
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
               {items.map(({ term, treeNum, depth }) => {
                 const isHov = hovered === treeNum;
+                const isSelected = selected === treeNum;
                 return (
-                  <div
+                  <button
                     key={treeNum}
                     onMouseEnter={() => setHovered(treeNum)}
                     onMouseLeave={() => setHovered(null)}
+                    onClick={() => setSelected(isSelected ? null : treeNum)}
                     style={{
                       padding: depth === 0 ? "4px 11px" : "2px 8px",
-                      background: isHov ? cfg.color + "28" : cfg.color + "10",
-                      border: `1px solid ${cfg.color}${isHov ? "88" : "33"}`,
+                      background: isSelected ? cfg.color + "30" : isHov ? cfg.color + "28" : cfg.color + "10",
+                      border: `1px solid ${cfg.color}${isSelected ? "cc" : isHov ? "88" : "33"}`,
                       borderRadius: 16,
                       fontFamily: mono,
                       fontSize: depth === 0 ? 9.5 : 8.5,
-                      color: isHov ? cfg.color : cfg.color + "bb",
-                      cursor: "default",
+                      color: isSelected ? "#fff" : isHov ? cfg.color : cfg.color + "bb",
+                      cursor: "pointer",
                       transition: "all 0.1s",
                       fontWeight: depth === 0 ? 600 : 400,
+                      outline: "none",
                     }}
                   >
                     {term.name}
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -359,48 +353,13 @@ function AllTermsV({ data }) {
   );
 }
 
-// ── APP ────────────────────────────────────────────────────────────────────
-const VIEWS = [
-  { id: "pubtypes", label: "1. Publication Types" },
-  { id: "allterms", label: "2. All Terms" },
-];
-
 export default function MeshVConcepts() {
-  const [active, setActive] = useState("pubtypes");
   const { data, loading } = useVData();
 
-  const views = { pubtypes: PubTypes, allterms: AllTermsV };
-  const Active = views[active];
-
   return (
-    <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: BG }}>
+    <div style={{ width: "100%", height: "100vh", background: BG }}>
       <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
-
-      <nav style={{ display: "flex", alignItems: "center", gap: 0, borderBottom: "2px solid #ffffff12", flexShrink: 0, background: "#0a0c10", overflowX: "auto" }}>
-        <div style={{ padding: "12px 20px", fontFamily: mono, fontSize: 9, color: "#ffffff33", letterSpacing: 2, flexShrink: 0 }}>
-          V CONCEPTS
-        </div>
-        {VIEWS.map(v => (
-          <button
-            key={v.id}
-            onClick={() => setActive(v.id)}
-            style={{
-              padding: "12px 18px", fontFamily: mono, fontSize: 10,
-              background: "transparent", border: "none",
-              borderBottom: active === v.id ? `2px solid ${TREE_COLOR}` : "2px solid transparent",
-              marginBottom: "-2px",
-              color: active === v.id ? TREE_COLOR : "#ffffff44",
-              cursor: "pointer", flexShrink: 0, transition: "all 0.15s",
-            }}
-          >
-            {v.label}
-          </button>
-        ))}
-      </nav>
-
-      <div style={{ flex: 1, overflow: "hidden" }}>
-        {loading ? <Loading /> : <Active data={data} />}
-      </div>
+      {loading ? <Loading /> : <AllTermsV data={data} />}
     </div>
   );
 }

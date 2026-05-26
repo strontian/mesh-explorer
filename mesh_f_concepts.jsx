@@ -384,10 +384,10 @@ function DisorderTaxonomy({ data }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SKETCH 1 — MENTAL HEALTH STACK
+// PSYCHOLOGY OVERVIEW
 // Four layer view: behavior, phenomena, disorders, and practice.
 // ═══════════════════════════════════════════════════════════════════════════
-function MentalHealthStack({ data }) {
+function PsychologyOverview({ data }) {
   const [selected, setSelected] = useState("F01");
   const [expandedByLayer, setExpandedByLayer] = useState({});
   const { branches, childrenMap } = data;
@@ -455,7 +455,7 @@ function MentalHealthStack({ data }) {
       <div style={{ padding: "16px 24px 12px", borderBottom: "1px solid #ffffff0a", flexShrink: 0 }}>
         <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff33", letterSpacing: 2 }}>F · PSYCHOLOGY AND PSYCHIATRY</div>
         <div style={{ fontFamily: mono, fontSize: 11, color: "#ffffffaa", marginTop: 2 }}>
-          Mental health as a stack: behavior, mind, disorder, practice
+          Behavior, mental phenomena, disorders, and professional practice
         </div>
       </div>
 
@@ -572,18 +572,8 @@ function MentalHealthStack({ data }) {
   );
 }
 
-// ── APP ────────────────────────────────────────────────────────────────────
-const VIEWS = [
-  { id: "stack",     label: "1. Mental Health Stack" },
-  { id: "disorders", label: "2. Disorder Taxonomy" },
-];
-
 export default function MeshFConcepts() {
-  const [active, setActive] = useState("stack");
   const { data, loading } = useFData();
-
-  const views = { stack: MentalHealthStack, disorders: DisorderTaxonomy };
-  const Active = views[active];
 
   return (
     <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: BG }}>
@@ -591,28 +581,12 @@ export default function MeshFConcepts() {
 
       <nav style={{ display: "flex", alignItems: "center", gap: 0, borderBottom: "2px solid #ffffff12", flexShrink: 0, background: "#0a0c10", overflowX: "auto" }}>
         <div style={{ padding: "12px 20px", fontFamily: mono, fontSize: 9, color: "#ffffff33", letterSpacing: 2, flexShrink: 0 }}>
-          F CONCEPTS
+          F · PSYCHOLOGY OVERVIEW
         </div>
-        {VIEWS.map(v => (
-          <button
-            key={v.id}
-            onClick={() => setActive(v.id)}
-            style={{
-              padding: "12px 18px", fontFamily: mono, fontSize: 10,
-              background: "transparent", border: "none",
-              borderBottom: active === v.id ? `2px solid ${TREE_COLOR}` : "2px solid transparent",
-              marginBottom: "-2px",
-              color: active === v.id ? TREE_COLOR : "#ffffff44",
-              cursor: "pointer", flexShrink: 0, transition: "all 0.15s",
-            }}
-          >
-            {v.label}
-          </button>
-        ))}
       </nav>
 
       <div style={{ flex: 1, overflow: "hidden" }}>
-        {loading ? <Loading /> : <Active data={data} />}
+        {loading ? <Loading /> : <PsychologyOverview data={data} />}
       </div>
     </div>
   );

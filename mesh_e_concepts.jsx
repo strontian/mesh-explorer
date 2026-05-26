@@ -257,19 +257,22 @@ const TYPE_GROUPS = [
 
 function ByTypeGrid({ data }) {
   const { branches, childrenMap } = data;
-  const [hovered, setHovered] = useState(null);
+  const [selected, setSelected] = useState(null);
 
   const byTN = {};
   for (const b of branches) byTN[b.treeNum] = b;
 
-  function getChildren(treeNum) {
-    return (childrenMap.get(treeNum) || []).slice(0, 5).map(c => c.term.name);
+  function getChildren(treeNum, limit = null) {
+    const children = (childrenMap.get(treeNum) || []).sort((a, b) =>
+      a.treeNum.localeCompare(b.treeNum, undefined, { numeric: true })
+    );
+    return limit == null ? children : children.slice(0, limit);
   }
 
   return (
     <div style={{ background: BG, width: "100%", height: "100%", overflow: "auto", padding: 32 }}>
       <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff22", letterSpacing: 3, marginBottom: 24 }}>
-        BY TYPE GRID — TREE E BRANCHES GROUPED BY CLINICAL ROLE
+        TECHNIQUES BY TYPE — TREE E BRANCHES GROUPED BY CLINICAL ROLE
       </div>
 
       <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
@@ -309,20 +312,24 @@ function ByTypeGrid({ data }) {
               {group.branches.map(tn => {
                 const b = byTN[tn];
                 if (!b) return null;
-                const isHov = hovered === tn;
-                const kids = getChildren(tn);
+                const directKids = getChildren(tn);
+                const visibleKids = selected === tn || directKids.some(k => k.treeNum === selected)
+                  ? directKids
+                  : directKids.slice(0, 5);
+                const selectedChild = directKids.find(k => k.treeNum === selected);
+                const selectedChildKids = selectedChild ? getChildren(selectedChild.treeNum) : [];
+                const isSelected = selected === tn;
                 return (
                   <div
                     key={tn}
-                    onMouseEnter={() => setHovered(tn)}
-                    onMouseLeave={() => setHovered(null)}
+                    onClick={() => setSelected(isSelected ? null : tn)}
                     style={{
-                      background: isHov ? group.color + "1a" : "#ffffff07",
-                      border: `1px solid ${isHov ? group.color + "66" : "#ffffff10"}`,
+                      background: isSelected ? group.color + "1a" : "#ffffff07",
+                      border: `1px solid ${isSelected ? group.color + "66" : "#ffffff10"}`,
                       borderRadius: 7,
                       padding: "10px 12px",
-                      cursor: "default",
-                      transition: "all 0.15s",
+                      cursor: "pointer",
+                      transition: "background 0.15s, border-color 0.15s",
                     }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
@@ -336,24 +343,104 @@ function ByTypeGrid({ data }) {
                     </div>
                     {/* Child chips */}
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                      {kids.map((name, i) => (
-                        <div key={i} style={{
-                          background: group.color + "15",
-                          border: `1px solid ${group.color}30`,
+                      {visibleKids.map(({ term, treeNum }) => {
+                        const childSelected = selected === treeNum;
+                        return (
+                        <button
+                          key={treeNum}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelected(childSelected ? tn : treeNum);
+                          }}
+                          style={{
+                          background: childSelected ? group.color + "28" : group.color + "15",
+                          border: `1px solid ${childSelected ? group.color + "88" : group.color + "30"}`,
                           borderRadius: 3,
                           padding: "2px 6px",
                           fontFamily: mono,
                           fontSize: 7,
-                          color: "#ffffffaa",
+                          color: childSelected ? "#fff" : "#ffffffaa",
                           maxWidth: "100%",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",
-                        }}>
-                          {name}
-                        </div>
-                      ))}
+                          cursor: "pointer",
+                        }}
+                        >
+                          {term.name}
+                        </button>
+                      );
+                      })}
+                      {selected !== tn && !selectedChild && directKids.length > visibleKids.length && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelected(tn);
+                          }}
+                          style={{
+                            background: "transparent",
+                            border: `1px dashed ${group.color}40`,
+                            borderRadius: 3,
+                            padding: "2px 6px",
+                            fontFamily: mono,
+                            fontSize: 7,
+                            color: group.color + "aa",
+                            cursor: "pointer",
+                          }}
+                        >
+                          +{directKids.length - visibleKids.length} more
+                        </button>
+                      )}
                     </div>
+                    {selectedChild && (
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          marginTop: 10,
+                          padding: 10,
+                          background: group.color + "08",
+                          border: `1px solid ${group.color}24`,
+                          borderRadius: 5,
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 8 }}>
+                          <div style={{ fontFamily: mono, fontSize: 7, color: group.color + "aa", letterSpacing: 1.4 }}>
+                            CHILDREN
+                          </div>
+                          <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff55" }}>
+                            {selectedChild.treeNum}
+                          </div>
+                        </div>
+                        {selectedChildKids.length === 0 ? (
+                          <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff33" }}>
+                            No child terms.
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                            {selectedChildKids.map(({ term, treeNum }) => (
+                              <div
+                                key={treeNum}
+                                title={treeNum}
+                                style={{
+                                  background: "#ffffff07",
+                                  border: "1px solid #ffffff12",
+                                  borderRadius: 999,
+                                  padding: "3px 7px",
+                                  fontFamily: mono,
+                                  fontSize: 7,
+                                  color: "#ffffffaa",
+                                  lineHeight: 1.35,
+                                }}
+                              >
+                                {term.name}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -363,7 +450,7 @@ function ByTypeGrid({ data }) {
       </div>
 
       <div style={{ marginTop: 24, fontFamily: mono, fontSize: 8, color: "#ffffff22" }}>
-        Hover any branch card to highlight • child chips show direct sub-categories
+        Click a branch to show all direct sub-categories. Click a tag to show its children.
       </div>
     </div>
   );
@@ -586,11 +673,7 @@ const VIEWS = [
 ];
 
 export default function MeshEConcepts() {
-  const [active, setActive] = useState("pipeline");
   const { data, loading } = useEData();
-
-  const views = { pipeline: ClinicalPipeline, grid: ByTypeGrid, depth: DepthMap };
-  const Active = views[active];
 
   return (
     <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: BG }}>
@@ -598,28 +681,15 @@ export default function MeshEConcepts() {
 
       <nav style={{ display: "flex", alignItems: "center", gap: 0, borderBottom: "2px solid #ffffff12", flexShrink: 0, background: "#0a0c10", overflowX: "auto" }}>
         <div style={{ padding: "12px 20px", fontFamily: mono, fontSize: 9, color: "#ffffff33", letterSpacing: 2, flexShrink: 0 }}>
-          E CONCEPTS
+          E · TECHNIQUES
         </div>
-        {VIEWS.map(v => (
-          <button
-            key={v.id}
-            onClick={() => setActive(v.id)}
-            style={{
-              padding: "12px 18px", fontFamily: mono, fontSize: 10,
-              background: "transparent", border: "none",
-              borderBottom: active === v.id ? `2px solid ${TREE_COLOR}` : "2px solid transparent",
-              marginBottom: "-2px",
-              color: active === v.id ? TREE_COLOR : "#ffffff44",
-              cursor: "pointer", flexShrink: 0, transition: "all 0.15s",
-            }}
-          >
-            {v.label}
-          </button>
-        ))}
+        <div style={{ padding: "12px 18px", fontFamily: mono, fontSize: 10, color: TREE_COLOR, borderBottom: `2px solid ${TREE_COLOR}`, marginBottom: "-2px", flexShrink: 0 }}>
+          By Type Grid
+        </div>
       </nav>
 
       <div style={{ flex: 1, overflow: "hidden" }}>
-        {loading ? <Loading /> : <Active data={data} />}
+        {loading ? <Loading /> : <ByTypeGrid data={data} />}
       </div>
     </div>
   );
