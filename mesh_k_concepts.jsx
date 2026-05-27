@@ -83,7 +83,7 @@ function branchColor(treeNum, branches) {
 
 function HumanitiesTree({ data }) {
   const { childrenMap } = data;
-  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState("K01.752");
   const [selectedTag, setSelectedTag] = useState(null);
   const [expandedNodes, setExpandedNodes] = useState([]);
 

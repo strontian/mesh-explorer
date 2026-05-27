@@ -352,6 +352,7 @@ const COUNTRY_REGION = new Map([
   ...[
     "Australia","Fiji","New Caledonia","New Zealand","Papua New Guinea","Solomon Is.","Vanuatu",
   ].map(name => [name, "Z01.678"]),
+  ["Antarctica", "Z01.158"],
 ]);
 
 const PLACE_COORDS = {
@@ -681,6 +682,42 @@ function WorldMap({ data }) {
     total: byPath.has(treeNum) ? countAll(treeNum) : 0,
   }));
 
+  function renderChildRow(parentTreeNum, color, label) {
+    const kids = (childrenMap.get(parentTreeNum) || []).sort((a, b) => a.term.name.localeCompare(b.term.name));
+    if (kids.length === 0) return null;
+    return (
+      <div style={{ marginTop: 14 }}>
+        <div style={{ fontFamily: mono, fontSize: 7, color: "#ffffff33", letterSpacing: 2, marginBottom: 8 }}>
+          {label} · {kids.length}
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+          {kids.map(({ term, treeNum }) => {
+            const active = selectedChild === treeNum || !!(selectedChild && selectedChild.startsWith(treeNum + "."));
+            return (
+              <button
+                key={treeNum}
+                onClick={() => setSelectedChild(treeNum)}
+                style={{
+                  fontFamily: mono,
+                  fontSize: 7.5,
+                  color: active ? "#fff" : color + "dd",
+                  background: active ? color + "24" : color + "10",
+                  border: `1px solid ${active ? color : color + "2a"}`,
+                  borderRadius: 999,
+                  padding: "3px 7px",
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+              >
+                {term.name}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ height: "100%", overflow: "hidden", display: "grid", gridTemplateColumns: "minmax(520px, 1fr) 330px" }}>
       <div style={{ padding: "22px 28px", overflowY: "auto" }}>
@@ -709,7 +746,7 @@ function WorldMap({ data }) {
                 geographies.map((geo) => {
                   const name = geo.properties?.name;
                   const regionId = COUNTRY_REGION.get(name);
-                  const cfg = regionId ? REGION_CONFIG[regionId] : null;
+                  const cfg = regionId ? (REGION_CONFIG[regionId] || SPECIAL_OVERLAYS[regionId]) : null;
                   const active = regionId && selected === regionId;
                   const countryActive = active && selectedChildItem && placeNameMatches(name, selectedChildItem.term.name);
                   const hovered = hoveredCountry === name;
@@ -874,57 +911,16 @@ function WorldMap({ data }) {
             {selectedRegion.term.note}
           </div>
         )}
-        <div style={{ fontFamily: mono, fontSize: 7, color: "#ffffff33", letterSpacing: 2, marginTop: 16, marginBottom: 8 }}>
-          DIRECT CHILDREN · {selectedKids.length}
-        </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-          {selectedKids.map(({ term, treeNum }) => (
-            <button
-              key={treeNum}
-              onClick={() => setSelectedChild(treeNum)}
-              style={{ fontFamily: mono, fontSize: 7.5, color: selectedChild === treeNum ? "#fff" : TREE_COLOR + "dd", background: selectedChild === treeNum ? TREE_COLOR + "24" : TREE_COLOR + "10", border: `1px solid ${selectedChild === treeNum ? TREE_COLOR : TREE_COLOR + "2a"}`, borderRadius: 4, padding: "3px 7px", cursor: "pointer", textAlign: "left" }}
-            >
-              {term.name}
-            </button>
-          ))}
-        </div>
+        {renderChildRow(selectedRegion?.treeNum, activeOverlay?.color || REGION_CONFIG[selected]?.color || TREE_COLOR, "DIRECT CHILDREN")}
         {selectedChildItem && (
           <div style={{ marginTop: 18, borderTop: "1px solid #ffffff0d", paddingTop: 14 }}>
-            {selectedPath.length > 0 && (
-              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 5, marginBottom: 12 }}>
-                {selectedPath.map((item, index) => (
-                  <button
-                    key={item.treeNum}
-                    onClick={() => setSelectedChild(item.treeNum)}
-                    style={{ fontFamily: mono, fontSize: 7, color: item.treeNum === selectedChild ? "#fff" : "#ffffff66", background: item.treeNum === selectedChild ? TREE_COLOR + "24" : "#ffffff05", border: `1px solid ${item.treeNum === selectedChild ? TREE_COLOR : "#ffffff10"}`, borderRadius: 4, padding: "3px 6px", cursor: "pointer" }}
-                  >
-                    {item.term.name}
-                  </button>
-                ))}
-              </div>
-            )}
-            <div style={{ fontFamily: mono, fontSize: 7, color: TREE_COLOR, letterSpacing: 1.5, marginBottom: 5 }}>{selectedChildItem.treeNum}</div>
             <div style={{ fontFamily: mono, fontSize: 11, color: "#e8e8e8", fontWeight: 700, lineHeight: 1.35 }}>{selectedChildItem.term.name}</div>
-            <div style={{ fontFamily: mono, fontSize: 7, color: "#ffffff33", letterSpacing: 2, marginTop: 13, marginBottom: 8 }}>
-              SUBAREAS · {selectedGrandkids.length}
-            </div>
-            {selectedGrandkids.length > 0 ? (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                {selectedGrandkids.map(({ term, treeNum }) => (
-                  <button
-                    key={treeNum}
-                    onClick={() => setSelectedChild(treeNum)}
-                    style={{ fontFamily: mono, fontSize: 7.5, color: "#ffffffaa", background: "#ffffff06", border: "1px solid #ffffff12", borderRadius: 4, padding: "3px 7px", cursor: "pointer", textAlign: "left" }}
-                  >
-                    {term.name}
-                  </button>
-                ))}
-              </div>
-            ) : (
+            {selectedGrandkids.length === 0 && (
               <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff44", lineHeight: 1.6 }}>
                 No narrower areas in this branch.
               </div>
             )}
+            {selectedPath.map(item => renderChildRow(item.treeNum, activeOverlay?.color || REGION_CONFIG[selected]?.color || TREE_COLOR, item.term.name.toUpperCase()))}
           </div>
         )}
       </aside>

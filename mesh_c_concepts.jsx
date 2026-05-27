@@ -567,7 +567,14 @@ function BodyMap({ data }) {
   const [sel, setSel]       = useState({ type:"systemic" });
   const [hovReg, setHovReg] = useState(null);
   const [specialFocus, setSpecialFocus] = useState({});
+  const [selectedTag, setSelectedTag] = useState(null);
+  const [expandedNodes, setExpandedNodes] = useState([]);
   const byTN = Object.fromEntries(branches.map(b => [b.treeNum, b]));
+  const treeIndex = new Map();
+  for (const b of branches) treeIndex.set(b.treeNum, { term:b.term, treeNum:b.treeNum });
+  for (const entries of childrenMap.values()) {
+    for (const entry of entries) treeIndex.set(entry.treeNum, entry);
+  }
 
   const isSysSel  = () => sel.type === "systemic";
   const isDistSel = () => sel.type === "distributed";
@@ -606,6 +613,141 @@ function BodyMap({ data }) {
       queue.push(...(childrenMap.get(item.treeNum) || []));
     }
     return n;
+  }
+
+  function getChildren(treeNum) {
+    return (childrenMap.get(treeNum) || []).sort((a, b) =>
+      a.treeNum.localeCompare(b.treeNum, undefined, { numeric:true })
+    );
+  }
+
+  function isExpanded(treeNum) {
+    return expandedNodes.includes(treeNum);
+  }
+
+  function selectNavigation(nextSel) {
+    setSel(nextSel);
+    setSelectedTag(null);
+    setExpandedNodes([]);
+  }
+
+  function toggleExpanded(treeNum) {
+    const dot = treeNum.lastIndexOf(".");
+    const parentTreeNum = dot === -1 ? treeNum[0] : treeNum.slice(0, dot);
+    const siblingTreeNums = getChildren(parentTreeNum)
+      .map(({ treeNum:siblingTreeNum }) => siblingTreeNum)
+      .filter(siblingTreeNum => siblingTreeNum !== treeNum);
+
+    setExpandedNodes(nodes => {
+      if (nodes.includes(treeNum)) {
+        return nodes.filter(n => n !== treeNum && !n.startsWith(treeNum + "."));
+      }
+      return [
+        ...nodes.filter(n =>
+          !siblingTreeNums.some(siblingTreeNum =>
+            n === siblingTreeNum || n.startsWith(siblingTreeNum + ".")
+          )
+        ),
+        treeNum,
+      ];
+    });
+  }
+
+  function renderSelectedTagDetail(rootTreeNum, color) {
+    const activeTreeNum = selectedTag && selectedTag.startsWith(rootTreeNum + ".") ? selectedTag : rootTreeNum;
+    const entry = treeIndex.get(activeTreeNum);
+    if (!entry) return null;
+    const children = getChildren(activeTreeNum);
+    return (
+      <div style={{ marginBottom:12, padding:12, background:"#ffffff06", border:`1px solid ${color}28`, borderRadius:8 }}>
+        <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:12 }}>
+          <div style={{ minWidth:0 }}>
+            <div style={{ fontFamily:mono, fontSize:7, color:color+"aa", letterSpacing:1.5, marginBottom:3 }}>SELECTED TERM</div>
+            <div style={{ fontFamily:mono, fontSize:13, color:"#e8e8e8", fontWeight:700, lineHeight:1.25 }}>{entry.term.name}</div>
+          </div>
+          <div style={{ fontFamily:mono, fontSize:8, color, whiteSpace:"nowrap" }}>{children.length === 0 ? "leaf" : `${children.length} children`}</div>
+        </div>
+        {entry.term.note && (
+          <div style={{ fontFamily:mono, fontSize:9, color:"#ffffff70", lineHeight:1.55, marginTop:9, maxWidth:980 }}>{entry.term.note}</div>
+        )}
+        <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginTop:10, fontFamily:mono, fontSize:7.5, color:"#ffffff42" }}>
+          <span>{entry.term.ui}</span>
+          {countDescendants(activeTreeNum) > 0 && <span>{countDescendants(activeTreeNum)} narrower terms</span>}
+        </div>
+      </div>
+    );
+  }
+
+  function renderTagTree(parentTreeNum, color, depth = 0) {
+    const kids = getChildren(parentTreeNum);
+    if (kids.length === 0) {
+      return <div style={{ fontFamily:mono, fontSize:8, color:"#ffffff35" }}>No child terms.</div>;
+    }
+
+    return kids.map(({ term, treeNum }) => {
+      const childCount = getChildren(treeNum).length;
+      const open = isExpanded(treeNum);
+      const active = selectedTag === treeNum;
+      return (
+        <div key={treeNum} style={{ display:"contents" }}>
+          <button
+            type="button"
+            title={treeNum}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedTag(active ? null : treeNum);
+              if (childCount > 0) toggleExpanded(treeNum);
+            }}
+            style={{
+              display:"inline-flex",
+              alignItems:"center",
+              gap:6,
+              minHeight:22,
+              width:"fit-content",
+              maxWidth:"100%",
+              padding:"4px 8px",
+              background:active ? color+"30" : open ? color+"22" : color+"11",
+              border:`1px solid ${active || open ? color+"88" : color+"30"}`,
+              borderRadius:999,
+              cursor:"pointer",
+              fontFamily:mono,
+              fontSize:8,
+              color:active ? "#fff" : "#ffffffb8",
+              lineHeight:1.25,
+            }}
+          >
+            <span style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{term.name}</span>
+            {childCount > 0 && <span style={{ color:color+"77", fontSize:7 }}>{childCount}</span>}
+          </button>
+          {open && (
+            <div style={{
+              flexBasis:"100%",
+              marginTop:3,
+              marginLeft:Math.min(10 + depth * 8, 34),
+              padding:"4px 0 2px 10px",
+              borderLeft:`1px solid ${color}28`,
+              display:"flex",
+              flexWrap:"wrap",
+              alignItems:"flex-start",
+              gap:4,
+            }}>
+              {renderTagTree(treeNum, color, depth + 1)}
+            </div>
+          )}
+        </div>
+      );
+    });
+  }
+
+  function renderSpecialExplorer(rootTreeNum, color) {
+    return (
+      <div>
+        {renderSelectedTagDetail(rootTreeNum, color)}
+        <div style={{ display:"flex", flexWrap:"wrap", alignItems:"flex-start", gap:4 }}>
+          {renderTagTree(rootTreeNum, color)}
+        </div>
+      </div>
+    );
   }
 
   function renderTree(parentTreeNum, color, depth = 0, limit = Infinity) {
@@ -713,25 +855,11 @@ function BodyMap({ data }) {
         <div style={{ fontFamily:mono, fontSize:9, color:"#ffffff44", lineHeight:1.8, marginBottom:16 }}>
           These branches affect the whole body — no single anatomical home.
         </div>
-        {DIST_REGION.branches.map(tn => {
-          const b = byTN[tn]; if (!b) return null;
-          const kids = (childrenMap.get(tn)||[]).slice(0,9);
-          return (
-            <div key={tn} style={{ marginBottom:14, padding:"12px 14px", background:"#ffffff06", borderLeft:"3px solid #DDB89255", borderRadius:4 }}>
-              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-                <span style={{ fontFamily:mono, fontSize:8, color:"#DDB892" }}>{tn}</span>
-                <span style={{ fontFamily:mono, fontSize:8, color:"#ffffff33" }}>{b.totalCount} terms</span>
-              </div>
-              <div style={{ fontFamily:mono, fontSize:11, color:"#e8e8e8", fontWeight:700, marginBottom:8 }}>{b.term.name}</div>
-              <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>
-                {kids.map(({term:kt,treeNum:ktn}) => (
-                  <div key={ktn} style={{ padding:"2px 7px", fontFamily:mono, fontSize:8, color:"#DDB892bb", background:"#DDB89211", border:"1px solid #DDB89222", borderRadius:3 }}>{kt.name}</div>
-                ))}
-                {(childrenMap.get(tn)||[]).length > 9 && <div style={{ padding:"2px 7px", fontFamily:mono, fontSize:8, color:"#ffffff22" }}>+{(childrenMap.get(tn)||[]).length-9}</div>}
-              </div>
-            </div>
-          );
-        })}
+        {DIST_REGION.branches.map(tn => (
+          <div key={tn} style={{ marginBottom:14 }}>
+            {renderSpecialExplorer(tn, "#DDB892")}
+          </div>
+        ))}
       </div>
     );
 
@@ -749,7 +877,7 @@ function BodyMap({ data }) {
             </div>
           )}
           <div style={{ fontFamily:mono, fontSize:8, color:"#ffffff33", marginBottom:10 }}>{b.totalCount.toLocaleString()} total terms</div>
-          {renderTree(sel.id, cfg.color, 0, Infinity)}
+          {renderSpecialExplorer(sel.id, cfg.color)}
         </div>
       );
     }
@@ -761,9 +889,8 @@ function BodyMap({ data }) {
           <div style={{ fontFamily:mono, fontSize:8, color:region.color, letterSpacing:2, marginBottom:6 }}>{region.label.toUpperCase()}</div>
           {region.branches.map(tn => {
             const b = byTN[tn]; if (!b) return null;
-            const kids = (childrenMap.get(tn)||[]).slice(0,9);
             return (
-              <div key={tn} style={{ marginBottom:14, padding:"12px 14px", background:"#ffffff06", borderLeft:`3px solid ${region.color}55`, borderRadius:4 }}>
+              <div key={tn} style={{ marginBottom:14 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:4 }}>
                   <div>
                     <span style={{ fontFamily:mono, fontSize:8, color:region.color }}>{tn} · </span>
@@ -772,12 +899,7 @@ function BodyMap({ data }) {
                   <span style={{ fontFamily:mono, fontSize:8, color:"#ffffff33", flexShrink:0, marginLeft:8 }}>{b.totalCount} terms</span>
                 </div>
                 {b.term.note && <div style={{ fontFamily:mono, fontSize:8.5, color:"#ffffff44", lineHeight:1.5, marginBottom:8 }}>{b.term.note.slice(0,160)}…</div>}
-                <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>
-                  {kids.map(({term:kt,treeNum:ktn}) => (
-                    <div key={ktn} style={{ padding:"2px 7px", fontFamily:mono, fontSize:8, color:region.color+"bb", background:region.color+"11", border:`1px solid ${region.color}22`, borderRadius:3 }}>{kt.name}</div>
-                  ))}
-                  {(childrenMap.get(tn)||[]).length > 9 && <div style={{ padding:"2px 7px", fontFamily:mono, fontSize:8, color:"#ffffff22" }}>+{(childrenMap.get(tn)||[]).length-9}</div>}
-                </div>
+                {renderSpecialExplorer(tn, region.color)}
               </div>
             );
           })}
@@ -799,9 +921,9 @@ function BodyMap({ data }) {
           <div style={{ fontFamily:mono, fontSize:8, color:cfg.color, letterSpacing:2, marginBottom:4 }}>C22 · ANIMAL DISEASES</div>
           <div style={{ fontFamily:mono, fontSize:12, color:"#e8e8e8", fontWeight:700, marginBottom:6 }}>{b?.totalCount} terms across {kids.length} host-species groups</div>
           <div style={{ fontFamily:mono, fontSize:9, color:"#ffffff44", lineHeight:1.7, marginBottom:16 }}>
-            Select a first-level group to inspect its narrower disease terms.
+            Select tags to drill down through host-species disease groups.
           </div>
-          {renderSelectableSpecialTree("C22", cfg.color, specialFocus.C22, treeNum => setSpecialFocus(prev => ({ ...prev, C22: treeNum })))}
+          {renderSpecialExplorer("C22", cfg.color)}
         </div>
       );
 
@@ -811,9 +933,9 @@ function BodyMap({ data }) {
           <div style={{ fontFamily:mono, fontSize:8, color:cfg.color, letterSpacing:2, marginBottom:4 }}>C25 · CHEMICALLY-INDUCED</div>
           <div style={{ fontFamily:mono, fontSize:12, color:"#e8e8e8", fontWeight:700, marginBottom:8 }}>{b?.totalCount} terms · {kids.length} branches</div>
           <div style={{ fontFamily:mono, fontSize:9, color:"#ffffff44", lineHeight:1.7, marginBottom:16 }}>
-            Select a category to inspect lower-level drug, poisoning, and substance-related terms.
+            Select tags to inspect lower-level drug, poisoning, and substance-related terms.
           </div>
-          {renderSelectableSpecialTree("C25", cfg.color, specialFocus.C25, treeNum => setSpecialFocus(prev => ({ ...prev, C25: treeNum })))}
+          {renderSpecialExplorer("C25", cfg.color)}
         </div>
       );
 
@@ -823,9 +945,9 @@ function BodyMap({ data }) {
           <div style={{ fontFamily:mono, fontSize:8, color:cfg.color, letterSpacing:2, marginBottom:4 }}>C24 · OCCUPATIONAL DISEASES</div>
           <div style={{ fontFamily:mono, fontSize:12, color:"#e8e8e8", fontWeight:700, marginBottom:8 }}>{b?.totalCount} terms · {kids.length} categories</div>
           <div style={{ fontFamily:mono, fontSize:9, color:"#ffffff44", lineHeight:1.7, marginBottom:16 }}>
-            Small enough to show the full branch.
+            Small branch, but still navigable with the same tag model.
           </div>
-          {renderTree("C24", cfg.color, 0, Infinity)}
+          {renderSpecialExplorer("C24", cfg.color)}
         </div>
       );
 
@@ -837,9 +959,9 @@ function BodyMap({ data }) {
             {b?.totalCount} terms · {kids.length} injury types — widest, flattest branch in C
           </div>
           <div style={{ fontFamily:mono, fontSize:9, color:"#ffffff44", lineHeight:1.7, marginBottom:16 }}>
-            Select an injury type to see its lower-level terms.
+            Select injury-type tags to see lower-level terms.
           </div>
-          {renderSelectableSpecialTree("C26", cfg.color, specialFocus.C26, treeNum => setSpecialFocus(prev => ({ ...prev, C26: treeNum })))}
+          {renderSpecialExplorer("C26", cfg.color)}
         </div>
       );
 
@@ -851,13 +973,7 @@ function BodyMap({ data }) {
           <div style={{ fontFamily:mono, fontSize:9, color:"#ffffff44", lineHeight:1.8, marginBottom:16 }}>
             Only 2 direct children and 4 terms total in the 2026 edition — a category that exists in name but remains almost empty.
           </div>
-          {kids.map(({term:kt,treeNum:ktn}) => (
-            <div key={ktn} style={{ marginBottom:8, padding:"10px 14px", background:"#ffffff06", borderLeft:`3px solid ${cfg.color}44`, borderRadius:4 }}>
-              <div style={{ fontFamily:mono, fontSize:8, color:cfg.color }}>{ktn}</div>
-              <div style={{ fontFamily:mono, fontSize:11, color:"#e8e8e8", marginTop:2 }}>{kt.name}</div>
-              {kt.note && <div style={{ fontFamily:mono, fontSize:8.5, color:"#ffffff44", marginTop:4 }}>{kt.note.slice(0,240)}</div>}
-            </div>
-          ))}
+          {renderSpecialExplorer("C21", cfg.color)}
         </div>
       );
     }
@@ -936,7 +1052,7 @@ function BodyMap({ data }) {
               return (
                 <button
                   key={s.type === "distributed" ? s.id : s.treeNum}
-                  onClick={() => setSel(s.type === "distributed" ? {type:"distributed"} : {type:"systemicBranch", id:s.treeNum})}
+                  onClick={() => selectNavigation(s.type === "distributed" ? {type:"distributed"} : {type:"systemicBranch", id:s.treeNum})}
                   style={{ padding:"6px 9px", display:"flex", alignItems:"center", gap:6, fontFamily:mono, fontSize:8, background:active?s.color+"1e":"#ffffff06", border:`1px solid ${active?s.color:"#ffffff0a"}`, borderRadius:5, cursor:"pointer", color:active?s.color:"#ffffff55", transition:"all 0.12s", textAlign:"left" }}
                 >
                   <span>{s.type === "distributed" ? "≋" : s.treeNum}</span>
@@ -946,7 +1062,7 @@ function BodyMap({ data }) {
               );
             })}
             {SPECIAL_CFG.map(s => (
-              <button key={s.treeNum} onClick={() => setSel({type:"special",id:s.treeNum})} style={{ padding:"6px 9px", display:"flex", alignItems:"center", gap:6, fontFamily:mono, fontSize:8, background:isSpecSel(s.treeNum)?s.color+"1e":"#ffffff06", border:`1px solid ${isSpecSel(s.treeNum)?s.color:"#ffffff0a"}`, borderRadius:5, cursor:"pointer", color:isSpecSel(s.treeNum)?s.color:"#ffffff55", transition:"all 0.12s", textAlign:"left" }}>
+              <button key={s.treeNum} onClick={() => selectNavigation({type:"special",id:s.treeNum})} style={{ padding:"6px 9px", display:"flex", alignItems:"center", gap:6, fontFamily:mono, fontSize:8, background:isSpecSel(s.treeNum)?s.color+"1e":"#ffffff06", border:`1px solid ${isSpecSel(s.treeNum)?s.color:"#ffffff0a"}`, borderRadius:5, cursor:"pointer", color:isSpecSel(s.treeNum)?s.color:"#ffffff55", transition:"all 0.12s", textAlign:"left" }}>
                 <span>{s.emoji}</span>
                 <span>{s.label}</span>
               </button>
