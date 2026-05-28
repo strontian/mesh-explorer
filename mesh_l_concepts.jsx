@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { OverviewConceptShell } from "./mesh_overview_concept.jsx";
 
 const mono = "'IBM Plex Mono', monospace";
 const BG = "#0f1117";
@@ -629,24 +630,14 @@ function TermBrowser({ data }) {
 }
 
 export default function MeshLConcepts() {
-  const { data, loading } = useLData();
-
   return (
-    <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: BG }}>
-      <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
-
-      <nav style={{ display: "flex", alignItems: "center", gap: 0, borderBottom: "2px solid #ffffff12", flexShrink: 0, background: "#0a0c10", overflowX: "auto" }}>
-        <div style={{ padding: "12px 20px", fontFamily: mono, fontSize: 9, color: "#ffffff33", letterSpacing: 2, flexShrink: 0 }}>
-          L · INFORMATION
-        </div>
-        <div style={{ padding: "12px 18px", fontFamily: mono, fontSize: 10, color: TREE_COLOR, borderBottom: `2px solid ${TREE_COLOR}`, marginBottom: "-2px", flexShrink: 0 }}>
-          Information Map
-        </div>
-      </nav>
-
-      <div style={{ flex: 1, overflow: "hidden" }}>
-        {loading ? <Loading /> : <InformationMap data={data} />}
-      </div>
-    </div>
+    <OverviewConceptShell
+      treeLetter="L"
+      navLabel="L · INFORMATION"
+      eyebrow="INFORMATION — ORGANIZING, COMPUTING, RETRIEVING, AND COMMUNICATING KNOWLEDGE"
+      treeColor={TREE_COLOR}
+      branchColors={{ L01: TREE_COLOR }}
+      defaultCluster="L01.462"
+    />
   );
 }

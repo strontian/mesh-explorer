@@ -1408,7 +1408,7 @@ function TreeSwitcher({ data }) {
       </aside>
 
       <main style={{ overflowY: "auto", padding: "18px 22px 24px" }}>
-        <section style={{ background: "#ffffff06", border: "1px solid #ffffff10", borderRadius: 7, padding: "14px 15px", marginBottom: 14, fontFamily: mono }}>
+        <section style={{ background: "#ffffff06", border: "1px solid #ffffff10", borderRadius: 7, padding: "14px 15px", marginBottom: 14, fontFamily: mono, height: 142, minHeight: 142, maxHeight: 142, boxSizing: "border-box", overflow: "hidden" }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 14, alignItems: "start" }}>
             <div>
               <div style={{ fontSize: 15, color: "#fff", lineHeight: 1.3 }}>{currentTerm?.name || "Chemicals and Drugs"}</div>
@@ -1428,7 +1428,7 @@ function TreeSwitcher({ data }) {
             </div>
           </div>
           {currentTerm?.note && (
-            <div style={{ fontSize: 8.2, color: "#ffffff62", lineHeight: 1.55, marginTop: 11, maxWidth: 760 }}>
+            <div style={{ fontSize: 8.2, color: "#ffffff62", lineHeight: 1.55, marginTop: 11, maxWidth: 760, maxHeight: 54, overflowY: "auto" }}>
               {currentTerm.note}
             </div>
           )}
@@ -1539,21 +1539,296 @@ function TreeSwitcher({ data }) {
   );
 }
 
-// ── APP ────────────────────────────────────────────────────────────────────
-const VIEWS = [
-  { id: "classes", label: "1. Chemical Classes" },
-  { id: "search",  label: "2. Search First" },
-  { id: "actions", label: "3. Actions & Uses" },
-  { id: "explorer", label: "4. Chemical Explorer" },
-  { id: "switcher", label: "5. Tree Switcher" },
-];
+function CategoryDagSwitcher({ data }) {
+  const { branches, childrenMap, allDTerms } = data;
+  const [currentPath, setCurrentPath] = useState("D12");
+  const [query, setQuery] = useState("");
+
+  const nodeByPath = new Map();
+  for (const branch of branches) nodeByPath.set(branch.treeNum, branch.term);
+  for (const kids of childrenMap.values()) {
+    for (const { term, treeNum } of kids) nodeByPath.set(treeNum, term);
+  }
+
+  function parentOf(path) {
+    if (!path || path === "D") return null;
+    const dot = path.lastIndexOf(".");
+    return dot === -1 ? "D" : path.slice(0, dot);
+  }
+
+  function lineage(path) {
+    if (!path || path === "D") return [{ treeNum: "D", name: "Chemicals and Drugs" }];
+    const parts = path.split(".");
+    const nodes = [{ treeNum: "D", name: "Chemicals and Drugs" }];
+    for (let i = 1; i <= parts.length; i++) {
+      const treeNum = parts.slice(0, i).join(".");
+      nodes.push({ treeNum, name: nodeByPath.get(treeNum)?.name || treeNum });
+    }
+    return nodes;
+  }
+
+  function countDescendants(path) {
+    let n = 0;
+    const queue = [...(childrenMap.get(path) || [])];
+    while (queue.length) {
+      const item = queue.shift();
+      n += 1;
+      queue.push(...(childrenMap.get(item.treeNum) || []));
+    }
+    return n;
+  }
+
+  const currentTerm = nodeByPath.get(currentPath);
+  const currentColor = currentPath === "D" ? TREE_COLOR : chemColor(currentPath.slice(0, 3));
+  const children = (childrenMap.get(currentPath) || []).sort((a, b) =>
+    a.term.name.localeCompare(b.term.name)
+  );
+  const parentPath = parentOf(currentPath);
+  const siblings = parentPath ? (childrenMap.get(parentPath) || []).sort((a, b) =>
+    a.term.name.localeCompare(b.term.name)
+  ) : [];
+  const q = query.trim().toLowerCase();
+  const searchResults = q.length >= 2
+    ? allDTerms.filter(t => t.name.toLowerCase().includes(q)).slice(0, 36)
+    : [];
+  const pathSet = new Set(lineage(currentPath).map(n => n.treeNum));
+
+  function TreeNode({ item, depth }) {
+    const { term, treeNum } = item;
+    const active = treeNum === currentPath;
+    const onPath = pathSet.has(treeNum);
+    const kids = childrenMap.get(treeNum) || [];
+    const color = chemColor(treeNum.slice(0, 3));
+    const expanded = onPath || active;
+
+    return (
+      <div>
+        <button
+          onClick={() => setCurrentPath(treeNum)}
+          style={{
+            width: "100%", display: "grid", gridTemplateColumns: "42px 1fr auto", gap: 7, alignItems: "center",
+            padding: "5px 7px", paddingLeft: 7 + depth * 12,
+            background: active ? color + "1d" : onPath ? color + "0d" : "transparent",
+            border: `1px solid ${active ? color + "77" : "transparent"}`,
+            borderRadius: 4, cursor: "pointer", fontFamily: mono, textAlign: "left",
+          }}
+        >
+          <span style={{ fontSize: 7, color: active || onPath ? color : "#ffffff2d" }}>{treeNum.split(".").at(-1)}</span>
+          <span style={{ fontSize: 8, color: active ? "#fff" : onPath ? "#ffffffc8" : "#ffffff68", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{term.name}</span>
+          <span style={{ fontSize: 7, color: "#ffffff2d" }}>{kids.length || ""}</span>
+        </button>
+        {expanded && kids.length > 0 && (
+          <div style={{ marginTop: 2 }}>
+            {kids
+              .slice()
+              .sort((a, b) => a.term.name.localeCompare(b.term.name))
+              .slice(0, active ? 80 : 40)
+              .map(child => <TreeNode key={child.treeNum} item={child} depth={depth + 1} />)}
+            {kids.length > (active ? 80 : 40) && (
+              <div style={{ marginLeft: 7 + (depth + 1) * 12, padding: "4px 7px", fontFamily: mono, fontSize: 7, color: "#ffffff28" }}>
+                +{kids.length - (active ? 80 : 40)} more children
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function ChildDag() {
+    const CHIP_W = 140;
+    const CHIP_H = 30;
+    const GAP_X = 18;
+    const ROW_H = 60;
+    const PATH_GAP = 58;
+    const LEFT = 16;
+    const TOP = 14;
+    const visibleChildren = children.slice(0, 80);
+    const cols = Math.max(1, Math.min(5, Math.ceil(Math.sqrt(Math.max(visibleChildren.length, 1)))));
+    const rows = Math.max(1, Math.ceil(visibleChildren.length / cols));
+    const pathNodes = lineage(currentPath);
+    const graphW = cols * CHIP_W + (cols - 1) * GAP_X;
+    const minGraphW = 720;
+    const svgWidth = LEFT * 2 + Math.max(graphW, minGraphW);
+    const centerX = Math.max(LEFT, (svgWidth - CHIP_W) / 2);
+    const childStartX = LEFT + Math.max(0, (svgWidth - LEFT * 2 - graphW) / 2);
+    const parentX = centerX;
+    const parentY = TOP + (pathNodes.length - 1) * PATH_GAP;
+    const childY = parentY + ROW_H;
+    const svgHeight = childY + rows * 52 + TOP + (children.length > visibleChildren.length ? 24 : 0);
+
+    function nodeRect({ x, y, name, treeNum, color, active = false, count }) {
+      return (
+        <g key={treeNum} transform={`translate(${x}, ${y})`} style={{ cursor: treeNum === currentPath ? "default" : "pointer" }} onClick={() => treeNum !== currentPath && setCurrentPath(treeNum)}>
+          <rect width={CHIP_W} height={CHIP_H} rx="5" fill={active ? color + "30" : "#151922"} stroke={active ? color : color + "55"} strokeWidth="1" />
+          <text x="8" y="12" fill={active ? "#ffffff" : "#ffffffc8"} fontFamily="IBM Plex Mono, monospace" fontSize="7.5">
+            {name.length > 22 ? name.slice(0, 20) + "..." : name}
+          </text>
+          <text x="8" y="23" fill={color} fontFamily="IBM Plex Mono, monospace" fontSize="6.3">
+            {treeNum}{count > 0 ? ` · ${count} children` : ""}
+          </text>
+        </g>
+      );
+    }
+
+    return (
+      <div style={{ overflowX: "auto", paddingBottom: 6 }}>
+        <svg width={svgWidth} height={svgHeight} style={{ display: "block", minWidth: "100%" }}>
+          {pathNodes.slice(0, -1).map((node, index) => {
+            const sx = centerX + CHIP_W / 2;
+            const sy = TOP + index * PATH_GAP + CHIP_H;
+            const tx = centerX + CHIP_W / 2;
+            const ty = TOP + (index + 1) * PATH_GAP;
+            return (
+              <path
+                key={`${node.treeNum}-path-edge`}
+                d={`M ${sx} ${sy} V ${ty}`}
+                fill="none"
+                stroke="#ffffff2a"
+                strokeWidth="1.2"
+              />
+            );
+          })}
+          {visibleChildren.map((child, index) => {
+            const col = index % cols;
+            const row = Math.floor(index / cols);
+            const x = childStartX + col * (CHIP_W + GAP_X);
+            const y = childY + row * 52;
+            const sx = parentX + CHIP_W / 2;
+            const sy = parentY + CHIP_H;
+            const tx = x + CHIP_W / 2;
+            const ty = y;
+            const elbow = sy + 18;
+            return (
+              <path
+                key={`${child.treeNum}-edge`}
+                d={`M ${sx} ${sy} V ${elbow} H ${tx} V ${ty}`}
+                fill="none"
+                stroke="#ffffff22"
+                strokeWidth="1.1"
+              />
+            );
+          })}
+          {pathNodes.map((node, index) => {
+            const treeNum = node.treeNum;
+            return nodeRect({
+              x: centerX,
+              y: TOP + index * PATH_GAP,
+              name: node.name,
+              treeNum,
+              color: treeNum === "D" ? TREE_COLOR : chemColor(treeNum.slice(0, 3)),
+              active: treeNum === currentPath,
+              count: treeNum === currentPath ? children.length : (childrenMap.get(treeNum) || []).length,
+            });
+          })}
+          {visibleChildren.map((child, index) => {
+            const col = index % cols;
+            const row = Math.floor(index / cols);
+            return nodeRect({
+              x: childStartX + col * (CHIP_W + GAP_X),
+              y: childY + row * 52,
+              name: child.term.name,
+              treeNum: child.treeNum,
+              color: chemColor(child.treeNum.slice(0, 3)),
+              count: (childrenMap.get(child.treeNum) || []).length,
+            });
+          })}
+          {children.length > visibleChildren.length && (
+            <text x={LEFT} y={svgHeight - 8} fill="#ffffff35" fontFamily="IBM Plex Mono, monospace" fontSize="8">
+              +{children.length - visibleChildren.length} more children not shown in this graph
+            </text>
+          )}
+        </svg>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ background: BG, height: "100%", overflowY: "auto" }}>
+      <main style={{ overflowY: "auto", padding: "18px 22px 24px" }}>
+        <div style={{ fontFamily: mono, fontSize: 11, color: TREE_COLOR, letterSpacing: 3, marginBottom: 5 }}>CATEGORY DAG</div>
+        <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff38", lineHeight: 1.55, marginBottom: 14 }}>
+          Use the graph to move through the hierarchy. Search can jump to a descriptor placement.
+        </div>
+
+        <section style={{ background: "#ffffff06", border: "1px solid #ffffff10", borderRadius: 7, padding: "14px 15px", marginBottom: 14, fontFamily: mono }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 14, alignItems: "start" }}>
+            <div>
+              <div style={{ fontSize: 15, color: "#fff", lineHeight: 1.3 }}>{currentTerm?.name || "Chemicals and Drugs"}</div>
+              <div style={{ fontSize: 8, color: currentColor, marginTop: 5 }}>{currentPath}</div>
+            </div>
+            <div style={{ display: "flex", gap: 7, flexShrink: 0 }}>
+              {[
+                ["children", children.length],
+                ["siblings", siblings.length],
+                ["descendants", countDescendants(currentPath)],
+              ].map(([label, value]) => (
+                <div key={label} style={{ minWidth: 74, padding: "7px 8px", background: "#00000022", border: "1px solid #ffffff0d", borderRadius: 5, textAlign: "center" }}>
+                  <div style={{ fontSize: 12, color: currentColor }}>{value}</div>
+                  <div style={{ fontSize: 7, color: "#ffffff33", marginTop: 2 }}>{label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+          {currentTerm?.note && (
+            <div style={{ fontSize: 8.2, color: "#ffffff62", lineHeight: 1.55, marginTop: 11, maxWidth: 760 }}>
+              {currentTerm.note}
+            </div>
+          )}
+        </section>
+
+        <section style={{ marginBottom: 14 }}>
+          <div style={{ fontFamily: mono, fontSize: 7, color: "#ffffff25", letterSpacing: 2, marginBottom: 8 }}>CHILD CATEGORY DAG · TOP TO BOTTOM</div>
+          <div style={{ background: "#ffffff04", border: "1px solid #ffffff0d", borderRadius: 7, padding: "10px 11px" }}>
+            <ChildDag />
+            {children.length === 0 && (
+              <div style={{ fontFamily: mono, fontSize: 8.5, color: "#ffffff35", marginTop: 8 }}>
+                Leaf node: no child categories at this placement.
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section style={{ fontFamily: mono }}>
+        <div style={{ fontSize: 7, color: "#ffffff25", letterSpacing: 2, marginBottom: 8 }}>JUMP BY DESCRIPTOR</div>
+        <div style={{ display: "flex", alignItems: "center", background: "#ffffff0a", border: `1px solid ${q.length >= 2 ? TREE_COLOR + "77" : "#ffffff18"}`, borderRadius: 5, padding: "0 9px", marginBottom: 11 }}>
+          <span style={{ fontSize: 10, color: "#ffffff33", marginRight: 7 }}>⌕</span>
+          <input
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="search term..."
+            style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", fontFamily: mono, fontSize: 10, color: "#fff", padding: "9px 0", caretColor: TREE_COLOR }}
+          />
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 5 }}>
+          {searchResults.map(term => {
+            const paths = term.treeNums.filter(n => n.startsWith("D")).sort();
+            const firstPath = paths[0];
+            return (
+              <button
+                key={term.ui}
+                onClick={() => { if (firstPath) setCurrentPath(firstPath); setQuery(term.name); }}
+                style={{ textAlign: "left", padding: "8px 9px", background: "#ffffff06", border: "1px solid #ffffff0f", borderRadius: 5, cursor: "pointer", fontFamily: mono }}
+              >
+                <div style={{ fontSize: 8.5, color: "#ffffffc8", lineHeight: 1.35 }}>{term.name}</div>
+                <div style={{ fontSize: 7, color: "#ffffff33", marginTop: 4 }}>{paths.length} D placement{paths.length === 1 ? "" : "s"}</div>
+              </button>
+            );
+          })}
+        </div>
+        </section>
+      </main>
+    </div>
+  );
+}
 
 export default function MeshDConcepts() {
-  const [active, setActive] = useState("classes");
   const { data, loading } = useDData();
-
-  const views = { classes: ChemicalClasses, search: SearchFirst, actions: ActionsAndUses, explorer: ChemicalExplorer, switcher: TreeSwitcher };
-  const Active = views[active];
+  const [active, setActive] = useState("tree");
+  const views = [
+    { id: "tree", label: "Tree Switcher" },
+    { id: "categoryDag", label: "Category DAG" },
+  ];
 
   return (
     <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: BG }}>
@@ -1561,28 +1836,33 @@ export default function MeshDConcepts() {
 
       <nav style={{ display: "flex", alignItems: "center", gap: 0, borderBottom: "2px solid #ffffff12", flexShrink: 0, background: "#0a0c10", overflowX: "auto" }}>
         <div style={{ padding: "12px 20px", fontFamily: mono, fontSize: 9, color: "#ffffff33", letterSpacing: 2, flexShrink: 0 }}>
-          D CONCEPTS
+          D · CHEMICALS
         </div>
-        {VIEWS.map(v => (
+        {views.map(view => (
           <button
-            key={v.id}
-            onClick={() => setActive(v.id)}
+            key={view.id}
+            type="button"
+            onClick={() => setActive(view.id)}
             style={{
-              padding: "12px 18px", fontFamily: mono, fontSize: 10,
-              background: "transparent", border: "none",
-              borderBottom: active === v.id ? `2px solid ${TREE_COLOR}` : "2px solid transparent",
+              padding: "12px 18px",
+              fontFamily: mono,
+              fontSize: 10,
+              color: active === view.id ? TREE_COLOR : "#ffffff55",
+              background: "transparent",
+              border: "none",
+              borderBottom: active === view.id ? `2px solid ${TREE_COLOR}` : "2px solid transparent",
               marginBottom: "-2px",
-              color: active === v.id ? TREE_COLOR : "#ffffff44",
-              cursor: "pointer", flexShrink: 0, transition: "all 0.15s",
+              cursor: "pointer",
+              flexShrink: 0,
             }}
           >
-            {v.label}
+            {view.label}
           </button>
         ))}
       </nav>
 
       <div style={{ flex: 1, overflow: "hidden" }}>
-        {loading ? <Loading /> : <Active data={data} />}
+        {loading ? <Loading /> : active === "tree" ? <TreeSwitcher data={data} /> : <CategoryDagSwitcher data={data} />}
       </div>
     </div>
   );

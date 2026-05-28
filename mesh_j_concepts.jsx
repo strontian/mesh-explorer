@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { OverviewConceptShell } from "./mesh_overview_concept.jsx";
 
 const mono = "'IBM Plex Mono', monospace";
 const BG = "#0f1117";
@@ -368,41 +369,14 @@ const VIEWS = [
 ];
 
 export default function MeshJConcepts() {
-  const [active, setActive] = useState("sectors");
-  const { data, loading } = useJData();
-
-  const views = { sectors: SectorCards, j01: J01Breakdown };
-  const Active = views[active];
-
   return (
-    <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: BG }}>
-      <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
-
-      <nav style={{ display: "flex", alignItems: "center", gap: 0, borderBottom: "2px solid #ffffff12", flexShrink: 0, background: "#0a0c10", overflowX: "auto" }}>
-        <div style={{ padding: "12px 20px", fontFamily: mono, fontSize: 9, color: "#ffffff33", letterSpacing: 2, flexShrink: 0 }}>
-          J CONCEPTS
-        </div>
-        {VIEWS.map(v => (
-          <button
-            key={v.id}
-            onClick={() => setActive(v.id)}
-            style={{
-              padding: "12px 18px", fontFamily: mono, fontSize: 10,
-              background: "transparent", border: "none",
-              borderBottom: active === v.id ? `2px solid ${TREE_COLOR}` : "2px solid transparent",
-              marginBottom: "-2px",
-              color: active === v.id ? TREE_COLOR : "#ffffff44",
-              cursor: "pointer", flexShrink: 0, transition: "all 0.15s",
-            }}
-          >
-            {v.label}
-          </button>
-        ))}
-      </nav>
-
-      <div style={{ flex: 1, overflow: "hidden" }}>
-        {loading ? <Loading /> : <Active data={data} />}
-      </div>
-    </div>
+    <OverviewConceptShell
+      treeLetter="J"
+      navLabel="J · TECHNOLOGY"
+      eyebrow="TECHNOLOGY — INDUSTRY, AGRICULTURE, FOOD, AND MANUFACTURED ENVIRONMENTS"
+      treeColor={TREE_COLOR}
+      branchColors={BRANCH_COLORS}
+      defaultCluster="J01.040"
+    />
   );
 }

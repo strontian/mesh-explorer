@@ -139,6 +139,7 @@ function App() {
           onGeography={() => setActive({ kind: "concept", id: "z" })}
           onPublications={() => setActive({ kind: "concept", id: "v" })}
           onDiseases={() => setActive({ kind: "concept", id: "c" })}
+          onChemicals={() => setActive({ kind: "concept", id: "d" })}
         />
       )}
       {active.kind === "top" && active.id === "swimlanes" && <SwimLanes />}

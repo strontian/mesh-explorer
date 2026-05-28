@@ -628,7 +628,7 @@ function SurfaceView({ tree, branch, onBack, onBackToPlanet, meshData }) {
 }
 
 // ── APP ────────────────────────────────────────────────────────────────────
-export default function MeshCosmos({ onNamedGroups, onPsychology, onGeography, onPublications, onDiseases }) {
+export default function MeshCosmos({ onNamedGroups, onPsychology, onGeography, onPublications, onDiseases, onChemicals }) {
   const [view, setView] = useState("galaxy");
   const [selectedTree, setSelectedTree] = useState(null);
   const [selectedBranch, setSelectedBranch] = useState(null);
@@ -646,6 +646,8 @@ export default function MeshCosmos({ onNamedGroups, onPsychology, onGeography, o
       onPublications();
     } else if (tree.id === "C" && onDiseases) {
       onDiseases();
+    } else if (tree.id === "D" && onChemicals) {
+      onChemicals();
     } else {
       setSelectedTree(tree);
       setView("planet");

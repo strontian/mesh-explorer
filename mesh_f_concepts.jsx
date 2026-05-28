@@ -390,6 +390,7 @@ function DisorderTaxonomy({ data }) {
 function PsychologyOverview({ data }) {
   const [selected, setSelected] = useState("F01");
   const [expandedByLayer, setExpandedByLayer] = useState({});
+  const [expandedNodes, setExpandedNodes] = useState([]);
   const { branches, childrenMap } = data;
 
   const LAYERS = [
@@ -432,22 +433,110 @@ function PsychologyOverview({ data }) {
     return n;
   }
 
-  function collectVisibleDescendants(rootTreeNum, maxItems = 90, maxDepth = 4) {
-    const rows = [];
-    const walk = (treeNum, depth) => {
-      if (depth > maxDepth || rows.length >= maxItems) return;
-      const kids = (childrenMap.get(treeNum) || []).sort((a, b) =>
-        a.treeNum.localeCompare(b.treeNum, undefined, { numeric: true })
-      );
-      for (const child of kids) {
-        if (rows.length >= maxItems) break;
-        const grandCount = (childrenMap.get(child.treeNum) || []).length;
-        rows.push({ ...child, depth, grandCount });
-        if (grandCount > 0) walk(child.treeNum, depth + 1);
+  function getChildren(treeNum) {
+    return (childrenMap.get(treeNum) || []).sort((a, b) =>
+      a.treeNum.localeCompare(b.treeNum, undefined, { numeric: true })
+    );
+  }
+
+  function isExpanded(treeNum) {
+    return expandedNodes.includes(treeNum);
+  }
+
+  function toggleExpanded(treeNum) {
+    const dot = treeNum.lastIndexOf(".");
+    const parentTreeNum = dot === -1 ? treeNum[0] : treeNum.slice(0, dot);
+    const siblingTreeNums = getChildren(parentTreeNum)
+      .map(({ treeNum: siblingTreeNum }) => siblingTreeNum)
+      .filter(siblingTreeNum => siblingTreeNum !== treeNum);
+
+    setExpandedNodes(nodes => {
+      if (nodes.includes(treeNum)) {
+        return nodes.filter(n => n !== treeNum && !n.startsWith(treeNum + "."));
       }
-    };
-    walk(rootTreeNum, 1);
-    return rows;
+
+      return [
+        ...nodes.filter(n =>
+          !siblingTreeNums.some(siblingTreeNum =>
+            n === siblingTreeNum || n.startsWith(siblingTreeNum + ".")
+          )
+        ),
+        treeNum,
+      ];
+    });
+  }
+
+  function selectLayer(treeNum) {
+    setSelected(treeNum);
+    setExpandedByLayer(prev => ({ ...prev, [treeNum]: null }));
+    setExpandedNodes([]);
+  }
+
+  function renderExpandableTags(parentTreeNum, color, depth = 0) {
+    const children = getChildren(parentTreeNum);
+    if (children.length === 0) {
+      return (
+        <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff35", lineHeight: 1.5 }}>
+          No narrower terms in the current MeSH data.
+        </div>
+      );
+    }
+
+    const openChild = children.find(({ treeNum }) => isExpanded(treeNum));
+
+    return (
+      <>
+        {children.map(({ term, treeNum }) => {
+          const childCount = getChildren(treeNum).length;
+          const open = isExpanded(treeNum);
+          const active = selected === treeNum;
+          return (
+            <button
+              key={treeNum}
+              type="button"
+              title={treeNum}
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelected(treeNum);
+                if (childCount > 0) toggleExpanded(treeNum);
+              }}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                fontFamily: mono,
+                fontSize: 7.2,
+                color: active ? "#fff" : "#ffffffb8",
+                background: active ? color + "28" : open ? color + "20" : color + "0d",
+                border: `1px solid ${active || open ? color : color + "22"}`,
+                borderRadius: 12,
+                padding: "3px 7px",
+                cursor: "pointer",
+                maxWidth: "100%",
+              }}
+            >
+              <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{term.name}</span>
+              {childCount > 0 && <span style={{ color: "#ffffff45", fontSize: 6.5 }}>{childCount}</span>}
+            </button>
+          );
+        })}
+        {openChild && (
+          <div style={{
+            flexBasis: "100%",
+            marginTop: 3,
+            marginLeft: Math.min(10 + depth * 8, 34),
+            padding: "4px 0 2px 10px",
+            borderLeft: `1px solid ${color + "28"}`,
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "flex-start",
+            gap: 5,
+          }}>
+            {renderExpandableTags(openChild.treeNum, color, depth + 1)}
+          </div>
+        )}
+      </>
+    );
   }
 
   return (
@@ -459,30 +548,48 @@ function PsychologyOverview({ data }) {
         </div>
       </div>
 
-      <div style={{ flex: 1, display: "grid", gridTemplateColumns: "minmax(420px, 1fr) 340px", overflow: "hidden" }}>
+      <div style={{ flex: 1, display: "grid", gridTemplateColumns: "340px minmax(420px, 1fr)", overflow: "hidden" }}>
+        <aside style={{ borderRight: "1px solid #ffffff0a", padding: 20, overflowY: "auto" }}>
+          <div style={{ fontFamily: mono, fontSize: 8, color: selectedLayer.color, letterSpacing: 2, marginBottom: 6 }}>{selected}</div>
+          <div style={{ fontFamily: mono, fontSize: 13, color: "#ffffffdd", fontWeight: 600, lineHeight: 1.35 }}>{selectedTerm?.name}</div>
+          <div style={{ fontFamily: mono, fontSize: 8.5, color: "#ffffff55", lineHeight: 1.55, marginTop: 8 }}>{selectedLayer.phrase}</div>
+          {selectedTerm?.note && (
+            <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff55", lineHeight: 1.55, background: "#ffffff06", border: "1px solid #ffffff10", borderRadius: 6, padding: 10, marginTop: 12 }}>
+              {selectedTerm.note}
+            </div>
+          )}
+          <div style={{ fontFamily: mono, fontSize: 7.5, color: "#ffffff35", lineHeight: 1.6, marginTop: 14 }}>
+            Child terms are shown inline inside the active stack layer.
+          </div>
+        </aside>
+
         <div style={{ padding: 22, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
           {LAYERS.map((layer, idx) => {
             const branch = byId.get(layer.treeNum);
-            const children = (childrenMap.get(layer.treeNum) || []).slice(0, 12);
+            const children = getChildren(layer.treeNum);
             const active = selectedRoot === layer.treeNum;
             return (
               <div
                 key={layer.treeNum}
-                style={{ display: "grid", gridTemplateColumns: "92px minmax(0, 1fr)", gap: 14, padding: 16, background: active ? layer.color + "16" : "#ffffff06", border: `1px solid ${active ? layer.color : "#ffffff0f"}`, borderRadius: 8 }}
+                onClick={() => selectLayer(layer.treeNum)}
+                style={{ display: "grid", gridTemplateColumns: "92px minmax(0, 1fr)", gap: 14, padding: 16, background: active ? layer.color + "16" : "#ffffff06", border: `1px solid ${active ? layer.color : "#ffffff0f"}`, borderRadius: 8, cursor: "pointer" }}
               >
                 <div style={{ borderRight: `1px solid ${layer.color}33`, paddingRight: 12 }}>
                   <div style={{ fontFamily: mono, fontSize: 7, color: layer.color, letterSpacing: 2, marginBottom: 8 }}>LAYER {idx + 1}</div>
                   <button
-                    onClick={() => { setSelected(layer.treeNum); setExpandedByLayer(prev => ({ ...prev, [layer.treeNum]: null })); }}
+                    onClick={() => selectLayer(layer.treeNum)}
                     style={{ display: "block", background: "transparent", border: "none", padding: 0, fontFamily: mono, fontSize: 17, color: layer.color, fontWeight: 700, cursor: "pointer", textAlign: "left" }}
                   >
                     {layer.treeNum}
                   </button>
-                  <div style={{ fontFamily: mono, fontSize: 7, color: "#ffffff33", marginTop: 4 }}>{branch?.totalCount?.toLocaleString() || 0} terms</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 4, fontFamily: mono, fontSize: 7, color: "#ffffff33" }}>
+                    <span>{branch?.totalCount?.toLocaleString() || 0} terms</span>
+                    <span style={{ color: layer.color + "aa" }}>{children.length} children</span>
+                  </div>
                 </div>
                 <div>
                   <button
-                    onClick={() => { setSelected(layer.treeNum); setExpandedByLayer(prev => ({ ...prev, [layer.treeNum]: null })); }}
+                    onClick={() => selectLayer(layer.treeNum)}
                     style={{ display: "block", background: "transparent", border: "none", padding: 0, fontFamily: mono, fontSize: 13, color: active ? "#fff" : "#ffffffd0", fontWeight: 600, cursor: "pointer", textAlign: "left" }}
                   >
                     {branch?.term.name || layer.label}
@@ -494,7 +601,7 @@ function PsychologyOverview({ data }) {
                     {children.map(({ term, treeNum }) => (
                       <button
                         key={treeNum}
-                        onClick={(e) => { e.stopPropagation(); setSelected(treeNum); setExpandedByLayer(prev => ({ ...prev, [layer.treeNum]: treeNum })); }}
+                        onClick={(e) => { e.stopPropagation(); setSelected(treeNum); setExpandedByLayer(prev => ({ ...prev, [layer.treeNum]: treeNum })); setExpandedNodes([]); }}
                         style={{ fontFamily: mono, fontSize: 7.5, color: selectedInline === treeNum ? "#fff" : layer.color + "dd", background: selectedInline === treeNum ? layer.color + "28" : layer.color + "12", border: `1px solid ${selectedInline === treeNum ? layer.color : layer.color + "2f"}`, borderRadius: 4, padding: "2px 6px", cursor: "pointer" }}
                       >
                         {term.name}
@@ -514,38 +621,9 @@ function PsychologyOverview({ data }) {
                         </div>
                       </div>
 
-                      {selectedInlineChildren.length === 0 ? (
-                        <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff35", lineHeight: 1.5 }}>
-                          No narrower terms in the current MeSH data.
-                        </div>
-                      ) : (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                          {collectVisibleDescendants(selectedInline).map(({ term, treeNum, depth, grandCount }) => (
-                            <button
-                              key={treeNum}
-                              onClick={(e) => { e.stopPropagation(); setSelected(treeNum); }}
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: 4,
-                                fontFamily: mono,
-                                fontSize: 7.2,
-                                color: selected === treeNum ? "#fff" : "#ffffffb8",
-                                background: selected === treeNum ? layer.color + "28" : layer.color + "0d",
-                                border: `1px solid ${selected === treeNum ? layer.color : layer.color + "22"}`,
-                                borderRadius: 12,
-                                padding: "3px 7px",
-                                cursor: "pointer",
-                                maxWidth: "100%",
-                              }}
-                            >
-                              <span style={{ color: layer.color + "aa", fontSize: 6.2 }}>L{depth}</span>
-                              <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{term.name}</span>
-                              {grandCount > 0 && <span style={{ color: "#ffffff30", fontSize: 6.5 }}>+{grandCount}</span>}
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 5, alignItems: "flex-start" }}>
+                        {renderExpandableTags(selectedInline, layer.color)}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -553,20 +631,6 @@ function PsychologyOverview({ data }) {
             );
           })}
         </div>
-
-        <aside style={{ borderLeft: "1px solid #ffffff0a", padding: 20, overflowY: "auto" }}>
-          <div style={{ fontFamily: mono, fontSize: 8, color: selectedLayer.color, letterSpacing: 2, marginBottom: 6 }}>{selected}</div>
-          <div style={{ fontFamily: mono, fontSize: 13, color: "#ffffffdd", fontWeight: 600, lineHeight: 1.35 }}>{selectedTerm?.name}</div>
-          <div style={{ fontFamily: mono, fontSize: 8.5, color: "#ffffff55", lineHeight: 1.55, marginTop: 8 }}>{selectedLayer.phrase}</div>
-          {selectedTerm?.note && (
-            <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff55", lineHeight: 1.55, background: "#ffffff06", border: "1px solid #ffffff10", borderRadius: 6, padding: 10, marginTop: 12 }}>
-              {selectedTerm.note}
-            </div>
-          )}
-          <div style={{ fontFamily: mono, fontSize: 7.5, color: "#ffffff35", lineHeight: 1.6, marginTop: 14 }}>
-            Child terms are shown inline inside the active stack layer.
-          </div>
-        </aside>
       </div>
     </div>
   );

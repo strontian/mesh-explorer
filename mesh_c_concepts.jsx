@@ -564,7 +564,7 @@ const BODY_SILHOUETTE_PATH = "M 241.0,102.5 C 238.5,103.8 234.6,106.8 232.3,109.
 
 function BodyMap({ data }) {
   const { branches, childrenMap } = data;
-  const [sel, setSel]       = useState({ type:"systemic" });
+  const [sel, setSel]       = useState({ type:"overview" });
   const [hovReg, setHovReg] = useState(null);
   const [specialFocus, setSpecialFocus] = useState({});
   const [selectedTag, setSelectedTag] = useState(null);
@@ -576,6 +576,7 @@ function BodyMap({ data }) {
     for (const entry of entries) treeIndex.set(entry.treeNum, entry);
   }
 
+  const isOverviewSel = () => sel.type === "overview";
   const isSysSel  = () => sel.type === "systemic";
   const isDistSel = () => sel.type === "distributed";
   const isRegSel  = id => sel.type === "region"  && sel.id === id;
@@ -684,13 +685,16 @@ function BodyMap({ data }) {
       return <div style={{ fontFamily:mono, fontSize:8, color:"#ffffff35" }}>No child terms.</div>;
     }
 
-    return kids.map(({ term, treeNum }) => {
-      const childCount = getChildren(treeNum).length;
-      const open = isExpanded(treeNum);
-      const active = selectedTag === treeNum;
-      return (
-        <div key={treeNum} style={{ display:"contents" }}>
+    const openChild = kids.find(({ treeNum }) => isExpanded(treeNum));
+    return (
+      <>
+        {kids.map(({ term, treeNum }) => {
+          const childCount = getChildren(treeNum).length;
+          const open = isExpanded(treeNum);
+          const active = selectedTag === treeNum;
+          return (
           <button
+            key={treeNum}
             type="button"
             title={treeNum}
             onClick={(e) => {
@@ -719,24 +723,25 @@ function BodyMap({ data }) {
             <span style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{term.name}</span>
             {childCount > 0 && <span style={{ color:color+"77", fontSize:7 }}>{childCount}</span>}
           </button>
-          {open && (
-            <div style={{
-              flexBasis:"100%",
-              marginTop:3,
-              marginLeft:Math.min(10 + depth * 8, 34),
-              padding:"4px 0 2px 10px",
-              borderLeft:`1px solid ${color}28`,
-              display:"flex",
-              flexWrap:"wrap",
-              alignItems:"flex-start",
-              gap:4,
-            }}>
-              {renderTagTree(treeNum, color, depth + 1)}
-            </div>
-          )}
-        </div>
-      );
-    });
+          );
+        })}
+        {openChild && (
+          <div style={{
+            flexBasis:"100%",
+            marginTop:3,
+            marginLeft:Math.min(10 + depth * 8, 34),
+            padding:"4px 0 2px 10px",
+            borderLeft:`1px solid ${color}28`,
+            display:"flex",
+            flexWrap:"wrap",
+            alignItems:"flex-start",
+            gap:4,
+          }}>
+            {renderTagTree(openChild.treeNum, color, depth + 1)}
+          </div>
+        )}
+      </>
+    );
   }
 
   function renderSpecialExplorer(rootTreeNum, color) {
@@ -824,6 +829,68 @@ function BodyMap({ data }) {
 
   // ── Right panel ──────────────────────────────────────────────────────────
   function renderPanel() {
+    if (isOverviewSel()) return (
+      <div style={{ padding:"20px 24px", overflowY:"auto", height:"100%" }}>
+        <div style={{ fontFamily:mono, fontSize:8, color:TREE_COLOR, letterSpacing:2, marginBottom:6 }}>TOP-LEVEL C TREE</div>
+        <div style={{ fontFamily:mono, fontSize:13, color:"#e8e8e8", fontWeight:700, marginBottom:8 }}>Disease Branch Landscape</div>
+        <div style={{ fontFamily:mono, fontSize:9, color:"#ffffff44", lineHeight:1.8, marginBottom:18 }}>
+          The C tree starts as broad disease branches. Some are anatomical, some are systemic or causal, and some are contextual. Select any tag below or use the body map.
+        </div>
+        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+          {ANATOMY_GROUPS.map(group => {
+            const groupBranches = group.branches.map(tn => byTN[tn]).filter(Boolean);
+            const total = groupBranches.reduce((sum, branch) => sum + branch.totalCount, 0);
+            return (
+              <div key={group.id} style={{ padding:12, background:group.color+"08", border:`1px solid ${group.color}24`, borderRadius:8 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:10, marginBottom:8 }}>
+                  <div style={{ fontFamily:mono, fontSize:8, color:group.color, letterSpacing:1.4, fontWeight:700 }}>{group.label.toUpperCase()}</div>
+                  <div style={{ fontFamily:mono, fontSize:8, color:"#ffffff35" }}>{total.toLocaleString()} terms</div>
+                </div>
+                <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
+                  {groupBranches.map(branch => {
+                    const region = REGIONS.find(r => r.id === branch.treeNum);
+                    const special = SPECIAL_CFG.find(s => s.treeNum === branch.treeNum);
+                    const systemic = SYSTEMIC_CFG.find(s => s.treeNum === branch.treeNum);
+                    const nextSel = region
+                      ? { type:"region", id:branch.treeNum }
+                      : special
+                        ? { type:"special", id:branch.treeNum }
+                        : systemic
+                          ? { type:"systemicBranch", id:branch.treeNum }
+                          : { type:"region", id:branch.treeNum };
+                    return (
+                      <button
+                        key={branch.treeNum}
+                        type="button"
+                        onClick={() => selectNavigation(nextSel)}
+                        style={{
+                          display:"inline-flex",
+                          alignItems:"center",
+                          gap:6,
+                          padding:"5px 8px",
+                          background:group.color+"12",
+                          border:`1px solid ${group.color}34`,
+                          borderRadius:999,
+                          cursor:"pointer",
+                          fontFamily:mono,
+                          fontSize:8,
+                          color:"#ffffffb8",
+                          lineHeight:1.25,
+                        }}
+                      >
+                        <span style={{ color:group.color }}>{branch.treeNum}</span>
+                        <span>{branch.term.name}</span>
+                        <span style={{ color:"#ffffff35", fontSize:7 }}>{branch.totalCount}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
 
     if (isSysSel()) return (
       <div style={{ padding:"20px 24px", overflowY:"auto", height:"100%" }}>
@@ -1044,6 +1111,14 @@ function BodyMap({ data }) {
           </div>
 
           <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+            <button
+              type="button"
+              onClick={() => selectNavigation({type:"overview"})}
+              style={{ padding:"6px 9px", display:"flex", alignItems:"center", gap:6, fontFamily:mono, fontSize:8, background:isOverviewSel()?TREE_COLOR+"1e":"#ffffff06", border:`1px solid ${isOverviewSel()?TREE_COLOR:"#ffffff0a"}`, borderRadius:5, cursor:"pointer", color:isOverviewSel()?TREE_COLOR:"#ffffff55", transition:"all 0.12s", textAlign:"left" }}
+            >
+              <span>C</span>
+              <span>Top Level</span>
+            </button>
             {SYSTEMIC_CFG.map(s => {
               const active = s.type === "distributed" ? isDistSel() : isSysBranchSel(s.treeNum);
               const count = s.type === "distributed"

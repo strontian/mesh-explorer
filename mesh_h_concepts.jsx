@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { OverviewConceptShell } from "./mesh_overview_concept.jsx";
 
 const mono = "'IBM Plex Mono', monospace";
 const BG = "#0f1117";
@@ -73,6 +74,516 @@ function Loading() {
   return (
     <div style={{ background: BG, height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ fontFamily: mono, fontSize: 10, color: "#ffffff44" }}>Loading MeSH…</div>
+    </div>
+  );
+}
+
+function DisciplinesProgressiveMap({ data }) {
+  const { branches, childrenMap } = data;
+  const [selectedCluster, setSelectedCluster] = useState("H01.158");
+  const [selectedTag, setSelectedTag] = useState(null);
+  const [expandedNodes, setExpandedNodes] = useState([]);
+
+  const treeIndex = new Map();
+  for (const branch of branches) treeIndex.set(branch.treeNum, { term: branch.term, treeNum: branch.treeNum });
+  for (const entries of childrenMap.values()) {
+    for (const entry of entries) treeIndex.set(entry.treeNum, entry);
+  }
+
+  function getChildren(treeNum) {
+    return (childrenMap.get(treeNum) || []).sort((a, b) =>
+      a.treeNum.localeCompare(b.treeNum, undefined, { numeric: true })
+    );
+  }
+
+  function countDescendants(treeNum) {
+    let n = 0;
+    const queue = [...getChildren(treeNum)];
+    while (queue.length) {
+      const item = queue.shift();
+      n += 1;
+      queue.push(...getChildren(item.treeNum));
+    }
+    return n;
+  }
+
+  function rootColor(treeNum) {
+    return treeNum.startsWith("H02") ? H02_COLOR : H01_COLOR;
+  }
+
+  function isExpanded(treeNum) {
+    return expandedNodes.includes(treeNum);
+  }
+
+  function toggleExpanded(treeNum) {
+    const dot = treeNum.lastIndexOf(".");
+    const parentTreeNum = dot === -1 ? treeNum[0] : treeNum.slice(0, dot);
+    const siblings = getChildren(parentTreeNum)
+      .map(({ treeNum: siblingTreeNum }) => siblingTreeNum)
+      .filter(siblingTreeNum => siblingTreeNum !== treeNum);
+
+    setExpandedNodes(nodes => {
+      if (nodes.includes(treeNum)) {
+        return nodes.filter(n => n !== treeNum && !n.startsWith(treeNum + "."));
+      }
+      return [
+        ...nodes.filter(n =>
+          !siblings.some(siblingTreeNum => n === siblingTreeNum || n.startsWith(siblingTreeNum + "."))
+        ),
+        treeNum,
+      ];
+    });
+  }
+
+  function selectCluster(treeNum) {
+    setSelectedCluster(treeNum);
+    setSelectedTag(null);
+    setExpandedNodes([]);
+  }
+
+  function renderDetail() {
+    const activeTreeNum = selectedTag || selectedCluster;
+    const entry = treeIndex.get(activeTreeNum);
+    const color = rootColor(activeTreeNum);
+    if (!entry) return null;
+    const childCount = getChildren(activeTreeNum).length;
+    const descendants = countDescendants(activeTreeNum);
+
+    return (
+      <div style={{ height: 150, minHeight: 150, maxHeight: 150, boxSizing: "border-box", overflow: "hidden", marginBottom: 14, padding: 12, background: "#ffffff06", border: `1px solid ${color}2f`, borderRadius: 8 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontFamily: mono, fontSize: 7, color: color + "aa", letterSpacing: 1.5, marginBottom: 3 }}>
+              SELECTED TERM
+            </div>
+            <div style={{ fontFamily: mono, fontSize: 13, color: "#ffffffdd", fontWeight: 700, lineHeight: 1.25 }}>
+              {entry.term.name}
+            </div>
+          </div>
+          <div style={{ fontFamily: mono, fontSize: 8, color, whiteSpace: "nowrap" }}>
+            {childCount === 0 ? "leaf" : `${childCount} children`}
+          </div>
+        </div>
+        {entry.term.note && (
+          <div style={{ fontFamily: mono, fontSize: 9, color: "#ffffff70", lineHeight: 1.55, marginTop: 9, maxHeight: 58, overflowY: "auto" }}>
+            {entry.term.note}
+          </div>
+        )}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10, fontFamily: mono, fontSize: 7.5, color: "#ffffff42" }}>
+          <span>{entry.term.ui}</span>
+          {descendants > 0 && <span>{descendants.toLocaleString()} narrower terms</span>}
+        </div>
+      </div>
+    );
+  }
+
+  function renderTags(parentTreeNum, color, depth = 0) {
+    const children = getChildren(parentTreeNum);
+    if (children.length === 0) {
+      return <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff35" }}>No child terms.</div>;
+    }
+
+    const openChild = children.find(({ treeNum }) => isExpanded(treeNum));
+    return (
+      <>
+        {children.map(({ term, treeNum }) => {
+          const childCount = getChildren(treeNum).length;
+          const open = isExpanded(treeNum);
+          const active = selectedTag === treeNum;
+          return (
+            <button
+              key={treeNum}
+              type="button"
+              title={treeNum}
+              onClick={(event) => {
+                event.stopPropagation();
+                setSelectedTag(active ? null : treeNum);
+                if (childCount > 0) toggleExpanded(treeNum);
+              }}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                minHeight: 22,
+                width: "fit-content",
+                maxWidth: "100%",
+                padding: "4px 8px",
+                background: active ? color + "30" : open ? color + "22" : color + "11",
+                border: `1px solid ${active || open ? color + "88" : color + "30"}`,
+                borderRadius: 999,
+                cursor: "pointer",
+                fontFamily: mono,
+                fontSize: 8,
+                color: active ? "#fff" : "#ffffffb8",
+                lineHeight: 1.25,
+              }}
+            >
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{term.name}</span>
+              {childCount > 0 && <span style={{ color: color + "77", fontSize: 7 }}>{childCount}</span>}
+            </button>
+          );
+        })}
+        {openChild && (
+          <div style={{
+            flexBasis: "100%",
+            marginTop: 3,
+            marginLeft: Math.min(10 + depth * 8, 34),
+            padding: "4px 0 2px 10px",
+            borderLeft: `1px solid ${color + "28"}`,
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "flex-start",
+            gap: 4,
+          }}>
+            {renderTags(openChild.treeNum, color, depth + 1)}
+          </div>
+        )}
+      </>
+    );
+  }
+
+  return (
+    <div style={{ height: "100%", overflowY: "auto", padding: 24 }}>
+      <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff33", letterSpacing: 2, marginBottom: 16 }}>
+        DISCIPLINES — KNOWLEDGE DOMAINS AND HEALTH PROFESSIONS
+      </div>
+
+      {renderDetail()}
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        {branches.map(branch => {
+          const color = branch.color;
+          const clusters = getChildren(branch.treeNum);
+          const activeColumn = selectedCluster?.startsWith(branch.treeNum + ".");
+          return (
+            <div key={branch.treeNum} style={{ padding: 14, background: activeColumn ? color + "12" : "#ffffff06", border: `1px solid ${activeColumn ? color + "70" : "#ffffff12"}`, borderRadius: 8 }}>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginBottom: 4 }}>
+                <div style={{ fontFamily: mono, fontSize: 8, color, letterSpacing: 1.5 }}>{branch.treeNum}</div>
+                <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff42" }}>{branch.totalCount.toLocaleString()} total</div>
+              </div>
+              <div style={{ fontFamily: mono, fontSize: 13, color, fontWeight: 700, lineHeight: 1.3 }}>
+                  {branch.term.name}
+              </div>
+              <div style={{ fontFamily: mono, fontSize: 7.5, color: "#ffffff45", marginTop: 4, marginBottom: 12 }}>
+                {branch.directCount} top categories
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 6 }}>
+                {clusters.map(({ term, treeNum }) => {
+                  const active = selectedCluster === treeNum;
+                  const childCount = getChildren(treeNum).length;
+                  const total = countDescendants(treeNum);
+                  return (
+                    <button
+                      key={treeNum}
+                      type="button"
+                      onClick={() => selectCluster(treeNum)}
+                      style={{
+                        textAlign: "left",
+                        minHeight: 52,
+                        padding: "7px 8px",
+                        background: active ? color + "24" : color + "0c",
+                        border: `1px solid ${active ? color + "88" : color + "2c"}`,
+                        borderRadius: 6,
+                        cursor: "pointer",
+                        fontFamily: mono,
+                      }}
+                    >
+                      <div style={{ fontSize: 8.5, color: active ? "#fff" : "#ffffffc8", fontWeight: 700, lineHeight: 1.25 }}>
+                        {term.name}
+                      </div>
+                      <div style={{ display: "flex", gap: 7, marginTop: 5, fontSize: 7, color: "#ffffff42" }}>
+                        <span>{childCount} direct</span>
+                        <span>{total} total</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {selectedCluster && (
+        <div style={{
+          marginTop: 14,
+          padding: 12,
+          background: rootColor(selectedCluster) + "08",
+          border: `1px solid ${rootColor(selectedCluster) + "24"}`,
+          borderRadius: 8,
+        }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 8 }}>
+            <div style={{ fontFamily: mono, fontSize: 7, color: rootColor(selectedCluster) + "aa", letterSpacing: 1.5 }}>
+              EXPLORE {selectedCluster}
+            </div>
+            <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff42" }}>
+              {treeIndex.get(selectedCluster)?.term.name}
+            </div>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 4 }}>
+            {renderTags(selectedCluster, rootColor(selectedCluster))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DisciplinesOverviewMap({ data }) {
+  const { branches, childrenMap } = data;
+  const [selectedLayer, setSelectedLayer] = useState("H01.158");
+  const [selectedTag, setSelectedTag] = useState(null);
+  const [expandedNodes, setExpandedNodes] = useState([]);
+
+  const treeIndex = new Map();
+  for (const branch of branches) treeIndex.set(branch.treeNum, { term: branch.term, treeNum: branch.treeNum });
+  for (const entries of childrenMap.values()) {
+    for (const entry of entries) treeIndex.set(entry.treeNum, entry);
+  }
+
+  function getChildren(treeNum) {
+    return (childrenMap.get(treeNum) || []).sort((a, b) =>
+      a.treeNum.localeCompare(b.treeNum, undefined, { numeric: true })
+    );
+  }
+
+  function countDescendants(treeNum) {
+    let n = 0;
+    const queue = [...getChildren(treeNum)];
+    while (queue.length) {
+      const item = queue.shift();
+      n += 1;
+      queue.push(...getChildren(item.treeNum));
+    }
+    return n;
+  }
+
+  function rootColor(treeNum) {
+    return treeNum.startsWith("H02") ? H02_COLOR : H01_COLOR;
+  }
+
+  function isExpanded(treeNum) {
+    return expandedNodes.includes(treeNum);
+  }
+
+  function toggleExpanded(treeNum) {
+    const dot = treeNum.lastIndexOf(".");
+    const parentTreeNum = dot === -1 ? treeNum[0] : treeNum.slice(0, dot);
+    const siblings = getChildren(parentTreeNum)
+      .map(({ treeNum: siblingTreeNum }) => siblingTreeNum)
+      .filter(siblingTreeNum => siblingTreeNum !== treeNum);
+
+    setExpandedNodes(nodes => {
+      if (nodes.includes(treeNum)) {
+        return nodes.filter(n => n !== treeNum && !n.startsWith(treeNum + "."));
+      }
+      return [
+        ...nodes.filter(n =>
+          !siblings.some(siblingTreeNum => n === siblingTreeNum || n.startsWith(siblingTreeNum + "."))
+        ),
+        treeNum,
+      ];
+    });
+  }
+
+  function selectLayer(treeNum) {
+    setSelectedLayer(treeNum);
+    setSelectedTag(treeNum);
+    setExpandedNodes(getChildren(treeNum).length > 0 ? [treeNum] : []);
+  }
+
+  function selectTag(treeNum) {
+    setSelectedTag(treeNum);
+    if (getChildren(treeNum).length > 0) toggleExpanded(treeNum);
+  }
+
+  function renderDetail() {
+    const activeTreeNum = selectedTag || selectedLayer || "H";
+    const entry = treeIndex.get(activeTreeNum);
+    const color = activeTreeNum.startsWith("H02") ? H02_COLOR : activeTreeNum.startsWith("H01") ? H01_COLOR : TREE_COLOR;
+    if (!entry) return null;
+    const childCount = getChildren(activeTreeNum).length;
+    const descendants = countDescendants(activeTreeNum);
+    const note = entry.term.note || entry.term.scopeNote;
+
+    return (
+      <aside style={{
+        padding: 16,
+        background: "#ffffff06",
+        border: `1px solid ${color}36`,
+        borderRadius: 8,
+        height: "fit-content",
+        position: "sticky",
+        top: 18,
+      }}>
+        <div style={{ fontFamily: mono, fontSize: 7, color: color + "aa", letterSpacing: 1.6, marginBottom: 8 }}>
+          SELECTED DISCIPLINE
+        </div>
+        <div style={{ fontFamily: mono, fontSize: 18, color: "#ffffffee", fontWeight: 700, lineHeight: 1.2 }}>
+          {entry.term.name}
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12, fontFamily: mono, fontSize: 8, color: "#ffffff50" }}>
+          <span>{activeTreeNum}</span>
+          <span>{entry.term.ui}</span>
+          <span>{childCount === 0 ? "leaf" : `${childCount} children`}</span>
+          {descendants > 0 && <span>{descendants.toLocaleString()} narrower</span>}
+        </div>
+        <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #ffffff10", fontFamily: mono, fontSize: 9.5, color: "#ffffff82", lineHeight: 1.6 }}>
+          {note || "No scope note available for this term."}
+        </div>
+      </aside>
+    );
+  }
+
+  function renderTags(parentTreeNum, color, depth = 0) {
+    const children = getChildren(parentTreeNum);
+    if (children.length === 0) {
+      return <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff35" }}>No child terms.</div>;
+    }
+
+    const openChild = children.find(({ treeNum }) => isExpanded(treeNum));
+    return (
+      <>
+        {children.map(({ term, treeNum }) => {
+          const childCount = getChildren(treeNum).length;
+          const active = selectedTag === treeNum;
+          const open = isExpanded(treeNum);
+          return (
+            <button
+              key={treeNum}
+              type="button"
+              title={treeNum}
+              onClick={(event) => {
+                event.stopPropagation();
+                selectTag(treeNum);
+              }}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                minHeight: 22,
+                width: "fit-content",
+                maxWidth: "100%",
+                padding: "4px 8px",
+                background: active ? color + "30" : open ? color + "20" : color + "10",
+                border: `1px solid ${active || open ? color + "88" : color + "30"}`,
+                borderRadius: 999,
+                cursor: "pointer",
+                fontFamily: mono,
+                fontSize: 8,
+                color: active ? "#fff" : "#ffffffb8",
+                lineHeight: 1.25,
+              }}
+            >
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{term.name}</span>
+              {childCount > 0 && <span style={{ color: color + "77", fontSize: 7 }}>{childCount}</span>}
+            </button>
+          );
+        })}
+        {openChild && (
+          <div style={{
+            flexBasis: "100%",
+            marginTop: 4,
+            marginLeft: Math.min(10 + depth * 8, 34),
+            padding: "4px 0 2px 10px",
+            borderLeft: `1px solid ${color + "2c"}`,
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "flex-start",
+            gap: 4,
+          }}>
+            {renderTags(openChild.treeNum, color, depth + 1)}
+          </div>
+        )}
+      </>
+    );
+  }
+
+  return (
+    <div style={{ height: "100%", overflowY: "auto", padding: 24 }}>
+      <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff33", letterSpacing: 2, marginBottom: 16 }}>
+        DISCIPLINES — OVERVIEW WITH DETAIL PANEL
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "320px minmax(420px, 1fr)", gap: 16, alignItems: "start" }}>
+        {renderDetail()}
+
+        <main style={{ display: "grid", gap: 14 }}>
+          {branches.map(branch => {
+            const color = branch.color;
+            const clusters = getChildren(branch.treeNum);
+            const activeCluster = selectedLayer?.startsWith(branch.treeNum + ".") ? selectedLayer : null;
+            return (
+              <section key={branch.treeNum} style={{
+                padding: 14,
+                background: activeCluster ? color + "12" : "#ffffff05",
+                border: `1px solid ${activeCluster ? color + "70" : "#ffffff12"}`,
+                borderRadius: 8,
+              }}>
+                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
+                  <div>
+                    <div style={{ fontFamily: mono, fontSize: 8, color, letterSpacing: 1.5, marginBottom: 4 }}>{branch.treeNum}</div>
+                    <div style={{ fontFamily: mono, fontSize: 13, color: "#ffffffde", fontWeight: 700 }}>{branch.term.name}</div>
+                  </div>
+                  <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff42" }}>{branch.totalCount.toLocaleString()} total</div>
+                </div>
+
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {clusters.map(({ term, treeNum }) => {
+                    const active = selectedLayer === treeNum;
+                    const childCount = getChildren(treeNum).length;
+                    const descendants = countDescendants(treeNum);
+                    return (
+                      <button
+                        key={treeNum}
+                        type="button"
+                        onClick={() => selectLayer(treeNum)}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                          minHeight: 28,
+                          maxWidth: "100%",
+                          padding: "5px 9px",
+                          background: active ? color + "2e" : color + "10",
+                          border: `1px solid ${active ? color + "90" : color + "30"}`,
+                          borderRadius: 999,
+                          cursor: "pointer",
+                          fontFamily: mono,
+                          fontSize: 8.5,
+                          color: active ? "#fff" : "#ffffffc4",
+                          lineHeight: 1.2,
+                        }}
+                      >
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{term.name}</span>
+                        <span style={{ color: color + "88", fontSize: 7 }}>{childCount}/{descendants}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {activeCluster && (
+                  <div style={{
+                    marginTop: 12,
+                    padding: 11,
+                    background: color + "09",
+                    border: `1px solid ${color + "24"}`,
+                    borderRadius: 8,
+                  }}>
+                    <div style={{ fontFamily: mono, fontSize: 7, color: color + "aa", letterSpacing: 1.5, marginBottom: 8 }}>
+                      EXPLORE {treeIndex.get(activeCluster)?.term.name}
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 4 }}>
+                      {renderTags(activeCluster, color)}
+                    </div>
+                  </div>
+                )}
+              </section>
+            );
+          })}
+        </main>
+      </div>
     </div>
   );
 }
@@ -310,48 +821,15 @@ function AllTermsGrid({ data }) {
   );
 }
 
-// ── APP ────────────────────────────────────────────────────────────────────
-const VIEWS = [
-  { id: "worlds", label: "1. Two Worlds" },
-  { id: "grid",   label: "2. All Terms Grid" },
-];
-
 export default function MeshHConcepts() {
-  const [active, setActive] = useState("worlds");
-  const { data, loading } = useHData();
-
-  const views = { worlds: TwoWorlds, grid: AllTermsGrid };
-  const Active = views[active];
-
   return (
-    <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: BG }}>
-      <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
-
-      <nav style={{ display: "flex", alignItems: "center", gap: 0, borderBottom: "2px solid #ffffff12", flexShrink: 0, background: "#0a0c10", overflowX: "auto" }}>
-        <div style={{ padding: "12px 20px", fontFamily: mono, fontSize: 9, color: "#ffffff33", letterSpacing: 2, flexShrink: 0 }}>
-          H CONCEPTS
-        </div>
-        {VIEWS.map(v => (
-          <button
-            key={v.id}
-            onClick={() => setActive(v.id)}
-            style={{
-              padding: "12px 18px", fontFamily: mono, fontSize: 10,
-              background: "transparent", border: "none",
-              borderBottom: active === v.id ? `2px solid ${TREE_COLOR}` : "2px solid transparent",
-              marginBottom: "-2px",
-              color: active === v.id ? TREE_COLOR : "#ffffff44",
-              cursor: "pointer", flexShrink: 0, transition: "all 0.15s",
-            }}
-          >
-            {v.label}
-          </button>
-        ))}
-      </nav>
-
-      <div style={{ flex: 1, overflow: "hidden" }}>
-        {loading ? <Loading /> : <Active data={data} />}
-      </div>
-    </div>
+    <OverviewConceptShell
+      treeLetter="H"
+      navLabel="H · DISCIPLINES"
+      eyebrow="DISCIPLINES — KNOWLEDGE DOMAINS AND HEALTH PROFESSIONS"
+      treeColor={TREE_COLOR}
+      branchColors={{ H01: H01_COLOR, H02: H02_COLOR }}
+      defaultCluster="H01.158"
+    />
   );
 }

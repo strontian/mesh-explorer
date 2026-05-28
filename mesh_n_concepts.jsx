@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { OverviewConceptShell } from "./mesh_overview_concept.jsx";
 
 const mono = "'IBM Plex Mono', monospace";
 const BG = "#0f1117";
@@ -64,6 +65,15 @@ const HEALTH_GROUPS = [
   { id: "delivery", label: "CARE DELIVERY", desc: "where services happen and how they are administered", color: "#72C2B0", branches: ["N02", "N04"] },
   { id: "systems", label: "SYSTEM PERFORMANCE", desc: "organizations, economics, access, quality, and evaluation", color: "#B7E3C6", branches: ["N03", "N05"] },
 ];
+
+const HEALTH_BRANCH_ROLES = {
+  N01: "people",
+  N02: "places, workforce, services",
+  N03: "money and organizations",
+  N04: "administration",
+  N05: "quality, access, evaluation",
+  N06: "public health environment",
+};
 
 function healthGroupFor(treeNum) {
   return HEALTH_GROUPS.find(group => group.branches.some(branch => treeNum === branch || treeNum.startsWith(branch + ".")));
@@ -138,7 +148,19 @@ function HealthCareMap({ data }) {
     const childCount = getChildren(activeTreeNum).length;
     const descendants = countDescendants(activeTreeNum);
     return (
-      <div style={{ marginBottom: 12, padding: 12, background: "#ffffff06", border: `1px solid ${color}2f`, borderRadius: 8 }}>
+      <div style={{
+        boxSizing: "border-box",
+        height: 158,
+        minHeight: 158,
+        maxHeight: 158,
+        flexShrink: 0,
+        marginBottom: 16,
+        padding: 12,
+        background: "#ffffff06",
+        border: `1px solid ${color}2f`,
+        borderRadius: 8,
+        overflow: "hidden",
+      }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontFamily: mono, fontSize: 7, color: color + "aa", letterSpacing: 1.5, marginBottom: 3 }}>
@@ -153,7 +175,7 @@ function HealthCareMap({ data }) {
           </div>
         </div>
         {entry.term.note && (
-          <div style={{ fontFamily: mono, fontSize: 9, color: "#ffffff70", lineHeight: 1.55, marginTop: 9, maxWidth: 980 }}>
+          <div style={{ fontFamily: mono, fontSize: 9, color: "#ffffff70", lineHeight: 1.55, marginTop: 9, maxWidth: 980, maxHeight: 58, overflowY: "auto" }}>
             {entry.term.note}
           </div>
         )}
@@ -171,13 +193,17 @@ function HealthCareMap({ data }) {
       return <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff35" }}>No child terms.</div>;
     }
 
-    return kids.map(({ term, treeNum }) => {
-      const childCount = getChildren(treeNum).length;
-      const open = isExpanded(treeNum);
-      const active = selectedTag === treeNum;
-      return (
-        <div key={treeNum} style={{ display: "contents" }}>
+    const openChild = kids.find(({ treeNum }) => isExpanded(treeNum));
+
+    return (
+      <>
+        {kids.map(({ term, treeNum }) => {
+          const childCount = getChildren(treeNum).length;
+          const open = isExpanded(treeNum);
+          const active = selectedTag === treeNum;
+          return (
           <button
+            key={treeNum}
             type="button"
             title={treeNum}
             onClick={(event) => {
@@ -206,24 +232,25 @@ function HealthCareMap({ data }) {
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{term.name}</span>
             {childCount > 0 && <span style={{ color: color + "77", fontSize: 7 }}>{childCount}</span>}
           </button>
-          {open && (
-            <div style={{
-              flexBasis: "100%",
-              marginTop: 3,
-              marginLeft: Math.min(10 + depth * 8, 34),
-              padding: "4px 0 2px 10px",
-              borderLeft: `1px solid ${color}28`,
-              display: "flex",
-              flexWrap: "wrap",
-              alignItems: "flex-start",
-              gap: 4,
-            }}>
-              {renderTags(treeNum, color, depth + 1)}
-            </div>
-          )}
-        </div>
-      );
-    });
+          );
+        })}
+        {openChild && (
+          <div style={{
+            flexBasis: "100%",
+            marginTop: 3,
+            marginLeft: Math.min(10 + depth * 8, 34),
+            padding: "4px 0 2px 10px",
+            borderLeft: `1px solid ${color}28`,
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "flex-start",
+            gap: 4,
+          }}>
+            {renderTags(openChild.treeNum, color, depth + 1)}
+          </div>
+        )}
+      </>
+    );
   }
 
   const selectedGroup = healthGroupFor(selectedRoot) || HEALTH_GROUPS[0];
@@ -234,17 +261,33 @@ function HealthCareMap({ data }) {
       <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff33", letterSpacing: 2, marginBottom: 16 }}>
         HEALTH CARE — PEOPLE, DELIVERY, ORGANIZATIONS, QUALITY, AND PUBLIC HEALTH
       </div>
+      {renderDetail(selectedGroup.color)}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12, marginBottom: 16 }}>
-        {HEALTH_GROUPS.map(group => (
-          <div key={group.id} style={{ minWidth: 0 }}>
-            <div style={{ fontFamily: mono, fontSize: 8, color: group.color, letterSpacing: 1.6, marginBottom: 4 }}>
-              {group.label}
+      <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+        {HEALTH_GROUPS.map((group, groupIndex) => (
+          <div key={group.id} style={{ display: "flex", gap: 0, position: "relative" }}>
+            {groupIndex < HEALTH_GROUPS.length - 1 && (
+              <div style={{ position: "absolute", left: 159, top: "100%", width: 2, height: 16, background: group.color + "33", zIndex: 1 }} />
+            )}
+            <div style={{
+              width: 160,
+              flexShrink: 0,
+              padding: "16px 16px 16px 0",
+              borderRight: `3px solid ${group.color}`,
+              marginBottom: 16,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+            }}>
+              <div style={{ fontFamily: mono, fontSize: 9, color: group.color, fontWeight: 700, letterSpacing: 1.6, textAlign: "right" }}>
+                {group.label}
+              </div>
+              <div style={{ fontFamily: mono, fontSize: 7.5, color: group.color + "77", textAlign: "right", marginTop: 3, lineHeight: 1.35 }}>
+                {group.desc}
+              </div>
             </div>
-            <div style={{ fontFamily: mono, fontSize: 7.5, color: "#ffffff3f", lineHeight: 1.45, minHeight: 22, marginBottom: 7 }}>
-              {group.desc}
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+
+            <div style={{ flex: 1, padding: "16px 0 16px 16px", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
               {group.branches.map(treeNum => {
                 const branch = byTN[treeNum];
                 if (!branch) return null;
@@ -256,55 +299,54 @@ function HealthCareMap({ data }) {
                     type="button"
                     onClick={() => selectRoot(treeNum)}
                     style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 7,
                       textAlign: "left",
-                      minHeight: 66,
-                      padding: "9px 10px",
+                      padding: "7px 10px",
                       background: active ? group.color + "20" : group.color + "0d",
                       border: `1px solid ${active ? group.color + "88" : group.color + "2e"}`,
-                      borderRadius: 7,
+                      borderRadius: 6,
                       cursor: "pointer",
                       fontFamily: mono,
+                      color: active ? "#fff" : group.color,
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
-                      <span style={{ fontSize: 8, color: group.color + "aa" }}>{treeNum}</span>
-                      <span style={{ fontSize: 7.5, color: "#ffffff42" }}>{pct}%</span>
-                    </div>
-                    <div style={{ fontSize: 10, color: active ? "#fff" : group.color, fontWeight: 700, lineHeight: 1.25, marginTop: 3 }}>
+                    <span style={{ fontSize: 7, color: group.color + "aa" }}>{treeNum}</span>
+                    <span style={{ fontSize: 9.5, fontWeight: 700, lineHeight: 1.25 }}>
                       {branch.term.name}
-                    </div>
-                    <div style={{ fontSize: 7.5, color: "#ffffff45", marginTop: 6 }}>
-                      {branch.directCount} direct · {branch.totalCount.toLocaleString()} total
-                    </div>
+                    </span>
+                    <span style={{ fontSize: 7, color: "#ffffff45" }}>{branch.directCount} direct</span>
+                    <span style={{ fontSize: 7, color: "#ffffff30" }}>{pct}%</span>
                   </button>
                 );
               })}
+              {group.branches.includes(selectedRoot) && (
+                <div style={{
+                  flexBasis: "100%",
+                  marginTop: 8,
+                  padding: 12,
+                  background: group.color + "08",
+                  border: `1px solid ${group.color + "24"}`,
+                  borderRadius: 8,
+                }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 8 }}>
+                    <div style={{ fontFamily: mono, fontSize: 7, color: group.color + "aa", letterSpacing: 1.5 }}>
+                      EXPLORE {selectedRoot}
+                    </div>
+                    <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff42" }}>
+                      {selectedBranch?.term.name}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 4 }}>
+                    {renderTags(selectedRoot, group.color)}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         ))}
       </div>
-
-      {selectedBranch && (
-        <div style={{
-          padding: 12,
-          background: selectedGroup.color + "08",
-          border: `1px solid ${selectedGroup.color + "24"}`,
-          borderRadius: 8,
-        }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 10 }}>
-            <div style={{ fontFamily: mono, fontSize: 7, color: selectedGroup.color + "aa", letterSpacing: 1.5 }}>
-              EXPLORE {selectedRoot}
-            </div>
-            <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff42" }}>
-              {selectedBranch.term.name}
-            </div>
-          </div>
-          {renderDetail(selectedGroup.color)}
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 4 }}>
-            {renderTags(selectedRoot, selectedGroup.color)}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -882,24 +924,21 @@ function PopBreakdown({ data }) {
 }
 
 export default function MeshNConcepts() {
-  const { data, loading } = useNData();
-
   return (
-    <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: BG }}>
-      <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
-
-      <nav style={{ display: "flex", alignItems: "center", gap: 0, borderBottom: "2px solid #ffffff12", flexShrink: 0, background: "#0a0c10", overflowX: "auto" }}>
-        <div style={{ padding: "12px 20px", fontFamily: mono, fontSize: 9, color: "#ffffff33", letterSpacing: 2, flexShrink: 0 }}>
-          N · HEALTH CARE
-        </div>
-        <div style={{ padding: "12px 18px", fontFamily: mono, fontSize: 10, color: TREE_COLOR, borderBottom: `2px solid ${TREE_COLOR}`, marginBottom: "-2px", flexShrink: 0 }}>
-          Health Care Map
-        </div>
-      </nav>
-
-      <div style={{ flex: 1, overflow: "hidden" }}>
-        {loading ? <Loading /> : <HealthCareMap data={data} />}
-      </div>
-    </div>
+    <OverviewConceptShell
+      treeLetter="N"
+      navLabel="N · HEALTH CARE"
+      eyebrow="HEALTH CARE — PEOPLE, DELIVERY, ORGANIZATIONS, QUALITY, AND PUBLIC HEALTH"
+      treeColor={TREE_COLOR}
+      branchColors={{
+        N01: "#8FD0B8",
+        N02: "#72C2B0",
+        N03: "#9FD9BE",
+        N04: "#A8DFC8",
+        N05: "#B7E3C6",
+        N06: "#C8EAD6",
+      }}
+      defaultCluster="N02"
+    />
   );
 }

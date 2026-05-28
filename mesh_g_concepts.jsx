@@ -167,80 +167,122 @@ function ScaleOfObservation({ data }) {
       );
     }
 
-    return children.map(({ term, treeNum: childTreeNum }) => {
-      const childTerms = getChildren(childTreeNum);
-      const hasChildren = childTerms.length > 0;
-      const open = isExpanded(childTreeNum);
-      const active = selectedTag === childTreeNum;
-      return (
-        <div key={childTreeNum} style={{ display: "contents" }}>
-          <button
-            type="button"
-            title={childTreeNum}
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelectedTag(active ? null : childTreeNum);
-              if (hasChildren) toggleExpanded(childTreeNum);
-            }}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              minHeight: 22,
-              width: "fit-content",
-              maxWidth: "100%",
-              padding: "4px 8px",
-              marginTop: 5,
-              background: active ? color + "30" : open ? color + "22" : color + "11",
-              border: `1px solid ${active || open ? color + "88" : color + "30"}`,
-              borderRadius: 999,
-              cursor: "pointer",
-            }}
-          >
-            <div style={{ fontFamily: mono, fontSize: 8, color: active ? "#fff" : "#ffffffb8", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{term.name}</div>
-            {hasChildren && (
-              <div style={{ fontFamily: mono, fontSize: 7, color: color + "77" }}>
-                {childTerms.length}
-              </div>
-            )}
-          </button>
-          {open && (
-            <div style={{
-              flexBasis: "100%",
-              marginTop: 3,
-              marginLeft: Math.min(10 + depth * 8, 34),
-              padding: "4px 0 2px 10px",
-              borderLeft: `1px solid ${color + "28"}`,
-              display: "flex",
-              flexWrap: "wrap",
-              alignItems: "flex-start",
-              gap: 4,
-            }}>
-              {renderChildTags(childTreeNum, color, depth + 1)}
-            </div>
-          )}
-        </div>
-      );
-    });
+    const openChild = children.find(({ treeNum: childTreeNum }) => isExpanded(childTreeNum));
+
+    return (
+      <>
+        {children.map(({ term, treeNum: childTreeNum }) => {
+          const childTerms = getChildren(childTreeNum);
+          const hasChildren = childTerms.length > 0;
+          const open = isExpanded(childTreeNum);
+          const active = selectedTag === childTreeNum;
+          return (
+            <button
+              key={childTreeNum}
+              type="button"
+              title={childTreeNum}
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedTag(active ? null : childTreeNum);
+                if (hasChildren) toggleExpanded(childTreeNum);
+              }}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                minHeight: 22,
+                width: "fit-content",
+                maxWidth: "100%",
+                padding: "4px 8px",
+                marginTop: 5,
+                background: active ? color + "30" : open ? color + "22" : color + "11",
+                border: `1px solid ${active || open ? color + "88" : color + "30"}`,
+                borderRadius: 999,
+                cursor: "pointer",
+              }}
+            >
+              <div style={{ fontFamily: mono, fontSize: 8, color: active ? "#fff" : "#ffffffb8", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{term.name}</div>
+              {hasChildren && (
+                <div style={{ fontFamily: mono, fontSize: 7, color: color + "77" }}>
+                  {childTerms.length}
+                </div>
+              )}
+            </button>
+          );
+        })}
+        {openChild && (
+          <div style={{
+            flexBasis: "100%",
+            marginTop: 3,
+            marginLeft: Math.min(10 + depth * 8, 34),
+            padding: "4px 0 2px 10px",
+            borderLeft: `1px solid ${color + "28"}`,
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "flex-start",
+            gap: 4,
+          }}>
+            {renderChildTags(openChild.treeNum, color, depth + 1)}
+          </div>
+        )}
+      </>
+    );
   }
 
   function renderSelectedDetail(color) {
-    if (!selectedTag) {
+    const activeTreeNum = selectedTag || selected;
+    const detailBox = {
+      boxSizing: "border-box",
+      height: 158,
+      minHeight: 158,
+      maxHeight: 158,
+      flexShrink: 0,
+      marginBottom: 16,
+      padding: 12,
+      background: "#ffffff06",
+      border: `1px solid ${color + "28"}`,
+      borderRadius: 8,
+      overflow: "hidden",
+    };
+
+    if (!activeTreeNum) {
       return (
-        <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff30", padding: "8px 10px", border: "1px dashed #ffffff12", borderRadius: 6 }}>
-          Select a tag to see details.
+        <div style={detailBox}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontFamily: mono, fontSize: 7, color: color + "aa", letterSpacing: 1.5, marginBottom: 3 }}>
+                TREE G OVERVIEW
+              </div>
+              <div style={{ fontFamily: mono, fontSize: 13, color: "#ffffffdd", fontWeight: 700, lineHeight: 1.25 }}>
+                Phenomena and Processes
+              </div>
+            </div>
+            <div style={{ fontFamily: mono, fontSize: 8, color, whiteSpace: "nowrap" }}>
+              {branches.length} top branches
+            </div>
+          </div>
+          <div style={{ fontFamily: mono, fontSize: 9, color: "#ffffff70", lineHeight: 1.55, marginTop: 9 }}>
+            Top-level G branches are arranged here by scale of observation, from physical and chemical phenomena through cellular, organ-system, and whole-organism processes.
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 10 }}>
+            {SCALE_GROUPS.map(group => (
+              <span key={group.id} style={{ fontFamily: mono, fontSize: 7.5, color: group.color, background: group.color + "12", border: `1px solid ${group.color + "30"}`, borderRadius: 999, padding: "3px 7px" }}>
+                {group.label}
+              </span>
+            ))}
+          </div>
         </div>
       );
     }
 
-    const entry = treeIndex.get(selectedTag);
+    const entry = treeIndex.get(activeTreeNum);
     if (!entry) return null;
     const { term } = entry;
-    const childCount = getChildren(selectedTag).length;
+    const childCount = getChildren(activeTreeNum).length;
     const gPlacements = (term.treeNums || []).filter(tn => tn.startsWith("G"));
 
     return (
-      <div style={{ marginBottom: 12, padding: 12, background: "#ffffff06", border: `1px solid ${color + "28"}`, borderRadius: 8 }}>
+      <div style={detailBox}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontFamily: mono, fontSize: 7, color: color + "aa", letterSpacing: 1.5, marginBottom: 3 }}>
@@ -256,13 +298,14 @@ function ScaleOfObservation({ data }) {
         </div>
 
         {term.note && (
-          <div style={{ fontFamily: mono, fontSize: 9, color: "#ffffff70", lineHeight: 1.55, marginTop: 9, maxWidth: 980 }}>
+          <div style={{ fontFamily: mono, fontSize: 9, color: "#ffffff70", lineHeight: 1.55, marginTop: 9, maxWidth: 980, maxHeight: 58, overflowY: "auto" }}>
             {term.note}
           </div>
         )}
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10, fontFamily: mono, fontSize: 7.5, color: "#ffffff42" }}>
           <span>{term.ui}</span>
+          <span>{activeTreeNum}</span>
           {gPlacements.length > 1 && <span>{gPlacements.length} G placements</span>}
         </div>
       </div>
@@ -271,6 +314,8 @@ function ScaleOfObservation({ data }) {
 
   // Uncategorized branches (safety net)
   const ungrouped = branches.filter(b => !scaleGroupFor(b.treeNum));
+  const activeGroup = selected ? scaleGroupFor(selected) : null;
+  const detailColor = activeGroup?.color || TREE_COLOR;
 
   return (
     <div style={{ height: "100%", overflow: "hidden" }}>
@@ -278,6 +323,7 @@ function ScaleOfObservation({ data }) {
         <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff33", letterSpacing: 2, marginBottom: 16 }}>
           SCALE OF OBSERVATION — from abstract/physical to whole organism
         </div>
+        {renderSelectedDetail(detailColor)}
 
         {SCALE_GROUPS.map((group, gi) => {
           const groupBranches = branches.filter(b => group.branches.includes(b.treeNum));
@@ -355,7 +401,6 @@ function ScaleOfObservation({ data }) {
                         {selected}
                       </div>
                     </div>
-                    {renderSelectedDetail(group.color)}
                     <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 3 }}>
                       {renderChildTags(selected, group.color)}
                     </div>
