@@ -1123,6 +1123,7 @@ function TreeSwitcher({ data }) {
   const { branches, childrenMap, allDTerms } = data;
   const defaultTerm = allDTerms.find(t => t.name === "Fibrinopeptide A") || allDTerms[0];
   const [currentPath, setCurrentPath] = useState(defaultTerm?.treeNums.find(n => n.startsWith("D")) || "D");
+  const [selectedPath, setSelectedPath] = useState(defaultTerm?.treeNums.find(n => n.startsWith("D")) || "D");
   const [query, setQuery] = useState("");
 
   const nodeByPath = new Map();
@@ -1148,20 +1149,25 @@ function TreeSwitcher({ data }) {
     return nodes;
   }
 
-  function countChildren(path) {
-    return (childrenMap.get(path) || []).length;
+  function navigateTo(path) {
+    setCurrentPath(path);
+    setSelectedPath(path);
   }
 
   const currentTerm = nodeByPath.get(currentPath);
   const currentLineage = lineage(currentPath);
-  const parentPath = parentOf(currentPath);
-  const children = (childrenMap.get(currentPath) || []).sort((a, b) =>
+  const selectedTerm = nodeByPath.get(selectedPath);
+  const selectedParentPath = parentOf(selectedPath);
+  const selectedChildren = (childrenMap.get(selectedPath) || []).sort((a, b) =>
     a.term.name.localeCompare(b.term.name)
   );
-  const siblings = parentPath ? (childrenMap.get(parentPath) || []).sort((a, b) =>
+  const selectedSiblings = selectedParentPath ? (childrenMap.get(selectedParentPath) || []).sort((a, b) =>
     a.term.name.localeCompare(b.term.name)
   ) : [];
-  const siblingPlacements = currentTerm
+  const selectedPlacements = selectedTerm
+    ? selectedTerm.treeNums.filter(n => n.startsWith("D")).sort()
+    : [];
+  const navigationPlacements = currentTerm
     ? currentTerm.treeNums.filter(n => n.startsWith("D")).sort()
     : [];
   const q = query.trim().toLowerCase();
@@ -1314,17 +1320,18 @@ function TreeSwitcher({ data }) {
             {visibleNodes.map(node => {
               const primaryTreeNum = [...node.treeNums][0];
               const active = node.treeNums.has(currentPath) || [...node.treeNums].some(treeNum => pathSet.has(treeNum));
+              const selected = node.treeNums.has(selectedPath);
               const color = primaryTreeNum === "D" ? TREE_COLOR : chemColor(primaryTreeNum.slice(0, 3));
               const canNavigate = node.treeNum !== "D";
               return (
-                <g key={node.key} transform={`translate(${node.x}, ${node.y})`} style={{ cursor: canNavigate ? "pointer" : "default" }} onClick={() => canNavigate && setCurrentPath(primaryTreeNum)}>
+                <g key={node.key} transform={`translate(${node.x}, ${node.y})`} style={{ cursor: canNavigate ? "pointer" : "default" }} onClick={() => canNavigate && setSelectedPath(primaryTreeNum)}>
                   <rect
                     width={CHIP_W}
                     height={CHIP_H}
                     rx="4"
-                    fill={active ? color + "30" : "#151922"}
-                    stroke={active ? color : color + "55"}
-                    strokeWidth="1"
+                    fill={selected ? color + "36" : active ? color + "22" : "#151922"}
+                    stroke={selected ? color : active ? color + "aa" : color + "55"}
+                    strokeWidth={selected ? "1.4" : "1"}
                   />
                   <text x="8" y="11" fill={active ? "#ffffff" : "#ffffffc8"} fontFamily="IBM Plex Mono, monospace" fontSize="7.4">
                     {node.name.length > 20 ? node.name.slice(0, 18) + "..." : node.name}
@@ -1335,8 +1342,8 @@ function TreeSwitcher({ data }) {
                 </g>
               );
             })}
-            <g transform={`translate(${sinkX}, ${sinkY})`} style={{ cursor: "pointer" }} onClick={() => setCurrentPath(currentPath)}>
-              <rect width={CHIP_W} height={CHIP_H} rx="4" fill={TREE_COLOR + "30"} stroke={TREE_COLOR} strokeWidth="1" />
+            <g transform={`translate(${sinkX}, ${sinkY})`} style={{ cursor: "pointer" }} onClick={() => setSelectedPath(currentPath)}>
+              <rect width={CHIP_W} height={CHIP_H} rx="4" fill={selectedPath === currentPath ? TREE_COLOR + "36" : TREE_COLOR + "24"} stroke={TREE_COLOR} strokeWidth={selectedPath === currentPath ? "1.4" : "1"} />
               <text x="8" y="11" fill="#ffffff" fontFamily="IBM Plex Mono, monospace" fontSize="7.4">
                 {sinkName.length > 20 ? sinkName.slice(0, 18) + "..." : sinkName}
               </text>
@@ -1361,7 +1368,7 @@ function TreeSwitcher({ data }) {
     return (
       <div>
         <button
-          onClick={() => setCurrentPath(treeNum)}
+          onClick={() => navigateTo(treeNum)}
           style={{
             width: "100%", display: "grid", gridTemplateColumns: "42px 1fr auto", gap: 7, alignItems: "center",
             padding: "5px 7px", paddingLeft: 7 + depth * 12,
@@ -1411,14 +1418,15 @@ function TreeSwitcher({ data }) {
         <section style={{ background: "#ffffff06", border: "1px solid #ffffff10", borderRadius: 7, padding: "14px 15px", marginBottom: 14, fontFamily: mono, height: 142, minHeight: 142, maxHeight: 142, boxSizing: "border-box", overflow: "hidden" }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 14, alignItems: "start" }}>
             <div>
-              <div style={{ fontSize: 15, color: "#fff", lineHeight: 1.3 }}>{currentTerm?.name || "Chemicals and Drugs"}</div>
-              <div style={{ fontSize: 8, color: TREE_COLOR, marginTop: 5 }}>{currentPath}</div>
+              <div style={{ fontSize: 7, color: "#ffffff25", letterSpacing: 2, marginBottom: 6 }}>SELECTED NODE</div>
+              <div style={{ fontSize: 15, color: "#fff", lineHeight: 1.3 }}>{selectedTerm?.name || "Chemicals and Drugs"}</div>
+              <div style={{ fontSize: 8, color: TREE_COLOR, marginTop: 5 }}>{selectedPath}</div>
             </div>
             <div style={{ display: "flex", gap: 7, flexShrink: 0 }}>
               {[
-                ["children", children.length],
-                ["siblings", siblings.length],
-                ["placements", siblingPlacements.length || 1],
+                ["children", selectedChildren.length],
+                ["siblings", selectedSiblings.length],
+                ["placements", selectedPlacements.length || 1],
               ].map(([label, value]) => (
                 <div key={label} style={{ minWidth: 68, padding: "7px 8px", background: "#00000022", border: "1px solid #ffffff0d", borderRadius: 5, textAlign: "center" }}>
                   <div style={{ fontSize: 12, color: TREE_COLOR }}>{value}</div>
@@ -1427,31 +1435,24 @@ function TreeSwitcher({ data }) {
               ))}
             </div>
           </div>
-          {currentTerm?.note && (
+          {selectedTerm?.note && (
             <div style={{ fontSize: 8.2, color: "#ffffff62", lineHeight: 1.55, marginTop: 11, maxWidth: 760, maxHeight: 54, overflowY: "auto" }}>
-              {currentTerm.note}
+              {selectedTerm.note}
             </div>
           )}
         </section>
 
         <section style={{ marginBottom: 14 }}>
-          <div style={{ fontFamily: mono, fontSize: 7, color: "#ffffff25", letterSpacing: 2, marginBottom: 8 }}>PLACEMENT GRAPH · LEFT TO RIGHT</div>
-          <div style={{ background: "#ffffff04", border: "1px solid #ffffff0d", borderRadius: 7, padding: "10px 11px" }}>
-            <PlacementDag paths={siblingPlacements.length ? siblingPlacements : [currentPath]} orientation="horizontal" />
-          </div>
-        </section>
-
-        <section style={{ marginBottom: 14 }}>
           <div style={{ fontFamily: mono, fontSize: 7, color: "#ffffff25", letterSpacing: 2, marginBottom: 8 }}>PLACEMENT GRAPH · TOP TO BOTTOM</div>
           <div style={{ background: "#ffffff04", border: "1px solid #ffffff0d", borderRadius: 7, padding: "10px 11px" }}>
-            <PlacementDag paths={siblingPlacements.length ? siblingPlacements : [currentPath]} orientation="vertical" />
+            <PlacementDag paths={navigationPlacements.length ? navigationPlacements : [currentPath]} orientation="vertical" />
           </div>
         </section>
 
         <section style={{ marginBottom: 14 }}>
           <div style={{ fontFamily: mono, fontSize: 7, color: "#ffffff25", letterSpacing: 2, marginBottom: 8 }}>DEBUG · SOURCE PATHS</div>
           <div style={{ display: "grid", gap: 7, background: "#ffffff04", border: "1px solid #ffffff0d", borderRadius: 7, padding: "10px 11px", fontFamily: mono }}>
-            {(siblingPlacements.length ? siblingPlacements : [currentPath]).map(path => {
+            {(navigationPlacements.length ? navigationPlacements : [currentPath]).map(path => {
               const chain = lineage(path);
               const color = chemColor(path.slice(0, 3));
               return (
@@ -1480,31 +1481,6 @@ function TreeSwitcher({ data }) {
             })}
           </div>
         </section>
-
-        <section>
-          <div style={{ fontFamily: mono, fontSize: 7, color: "#ffffff25", letterSpacing: 2, marginBottom: 8 }}>CHILDREN</div>
-          {children.length === 0 ? (
-            <div style={{ fontFamily: mono, fontSize: 8.5, color: "#ffffff35" }}>No child nodes at this placement.</div>
-          ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: 7 }}>
-              {children.map(child => {
-                const grandkids = countChildren(child.treeNum);
-                const color = chemColor(child.treeNum.slice(0, 3));
-                return (
-                  <button
-                    key={child.treeNum}
-                    onClick={() => setCurrentPath(child.treeNum)}
-                    style={{ textAlign: "left", minHeight: 58, padding: "8px 10px", background: color + "09", border: `1px solid ${color}20`, borderRadius: 5, cursor: "pointer", fontFamily: mono }}
-                  >
-                    <div style={{ fontSize: 8.5, color: "#ffffffd0", lineHeight: 1.35 }}>{child.term.name}</div>
-                    <div style={{ fontSize: 7, color, marginTop: 5 }}>{child.treeNum}</div>
-                    <div style={{ fontSize: 7, color: "#ffffff2e", marginTop: 3 }}>{grandkids} children</div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </section>
       </main>
 
       <aside style={{ borderLeft: "1px solid #ffffff0d", padding: "16px 14px 22px", overflowY: "auto", fontFamily: mono }}>
@@ -1525,7 +1501,7 @@ function TreeSwitcher({ data }) {
             return (
               <button
                 key={term.ui}
-                onClick={() => { if (firstPath) setCurrentPath(firstPath); setQuery(term.name); }}
+                onClick={() => { if (firstPath) navigateTo(firstPath); setQuery(term.name); }}
                 style={{ textAlign: "left", padding: "8px 9px", background: "#ffffff06", border: "1px solid #ffffff0f", borderRadius: 5, cursor: "pointer", fontFamily: mono }}
               >
                 <div style={{ fontSize: 8.5, color: "#ffffffc8", lineHeight: 1.35 }}>{term.name}</div>
@@ -1541,7 +1517,7 @@ function TreeSwitcher({ data }) {
 
 function CategoryDagSwitcher({ data }) {
   const { branches, childrenMap, allDTerms } = data;
-  const [currentPath, setCurrentPath] = useState("D12");
+  const [currentPath, setCurrentPath] = useState("D");
   const [query, setQuery] = useState("");
 
   const nodeByPath = new Map();
@@ -1579,6 +1555,8 @@ function CategoryDagSwitcher({ data }) {
   }
 
   const currentTerm = nodeByPath.get(currentPath);
+  const currentTitle = currentTerm?.name || "Chemicals and Drugs";
+  const currentDescription = currentTerm?.note || "The top-level MeSH category for chemical substances, drugs, biological molecules, materials, mixtures, and functional chemical actions or uses. Its branches mix structural identity, biochemical class, material form, pharmaceutical preparation, and D27 action/use categories.";
   const currentColor = currentPath === "D" ? TREE_COLOR : chemColor(currentPath.slice(0, 3));
   const children = (childrenMap.get(currentPath) || []).sort((a, b) =>
     a.term.name.localeCompare(b.term.name)
@@ -1592,6 +1570,9 @@ function CategoryDagSwitcher({ data }) {
     ? allDTerms.filter(t => t.name.toLowerCase().includes(q)).slice(0, 36)
     : [];
   const pathSet = new Set(lineage(currentPath).map(n => n.treeNum));
+  const descriptorPlacements = currentTerm
+    ? currentTerm.treeNums.filter(n => n.startsWith("D")).sort()
+    : [currentPath];
 
   function TreeNode({ item, depth }) {
     const { term, treeNum } = item;
@@ -1641,27 +1622,96 @@ function CategoryDagSwitcher({ data }) {
     const GAP_X = 18;
     const ROW_H = 60;
     const PATH_GAP = 58;
+    const LANE_GAP = 158;
     const LEFT = 16;
     const TOP = 14;
     const visibleChildren = children.slice(0, 80);
     const cols = Math.max(1, Math.min(5, Math.ceil(Math.sqrt(Math.max(visibleChildren.length, 1)))));
     const rows = Math.max(1, Math.ceil(visibleChildren.length / cols));
-    const pathNodes = lineage(currentPath);
+    const placementPaths = descriptorPlacements.length ? descriptorPlacements : [currentPath];
+    const pathChains = placementPaths.map(path => lineage(path));
+    const maxPathDepth = Math.max(...pathChains.map(chain => chain.length), 1);
+    const mergedNodes = new Map();
+    const edgeMap = new Map();
+
+    function nodeKey(node) {
+      if (node.treeNum === "D") return "D";
+      return nodeByPath.get(node.treeNum)?.ui || node.treeNum;
+    }
+
+    function registerNode(node, depth) {
+      const key = nodeKey(node);
+      const term = nodeByPath.get(node.treeNum);
+      if (!mergedNodes.has(key)) {
+        mergedNodes.set(key, {
+          key,
+          name: node.name,
+          treeNum: node.treeNum,
+          treeNums: new Set([node.treeNum]),
+          depth,
+          ui: term?.ui,
+        });
+      } else {
+        const record = mergedNodes.get(key);
+        record.treeNums.add(node.treeNum);
+        record.depth = Math.min(record.depth, depth);
+      }
+      return mergedNodes.get(key);
+    }
+
+    for (const chain of pathChains) {
+      let previous = null;
+      chain.slice(0, -1).forEach((node, index) => {
+        const record = registerNode(node, index);
+        if (previous) edgeMap.set(`${previous.key}->${record.key}`, { fromKey: previous.key, toKey: record.key });
+        previous = record;
+      });
+      if (previous) edgeMap.set(`${previous.key}->sink`, { fromKey: previous.key, toSink: true });
+    }
+
+    const nodesByDepth = new Map();
+    for (const node of mergedNodes.values()) {
+      if (!nodesByDepth.has(node.depth)) nodesByDepth.set(node.depth, []);
+      nodesByDepth.get(node.depth).push(node);
+    }
+    for (const nodes of nodesByDepth.values()) {
+      nodes.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
     const graphW = cols * CHIP_W + (cols - 1) * GAP_X;
     const minGraphW = 720;
-    const svgWidth = LEFT * 2 + Math.max(graphW, minGraphW);
+    const widestPathRow = Math.max(1, ...[...nodesByDepth.values()].map(nodes => nodes.length));
+    const pathW = widestPathRow * CHIP_W + (widestPathRow - 1) * (LANE_GAP - CHIP_W);
+    const svgWidth = LEFT * 2 + Math.max(graphW, pathW, minGraphW);
     const centerX = Math.max(LEFT, (svgWidth - CHIP_W) / 2);
     const childStartX = LEFT + Math.max(0, (svgWidth - LEFT * 2 - graphW) / 2);
     const parentX = centerX;
-    const parentY = TOP + (pathNodes.length - 1) * PATH_GAP;
+    const parentY = TOP + (maxPathDepth - 1) * PATH_GAP;
     const childY = parentY + ROW_H;
     const svgHeight = childY + rows * 52 + TOP + (children.length > visibleChildren.length ? 24 : 0);
 
-    function nodeRect({ x, y, name, treeNum, color, active = false, count }) {
+    for (const [depth, nodes] of nodesByDepth.entries()) {
+      const rowStartX = Math.max(LEFT, centerX - ((nodes.length - 1) * LANE_GAP) / 2);
+      nodes.forEach((node, index) => {
+        node.x = rowStartX + index * LANE_GAP;
+        node.y = TOP + depth * PATH_GAP;
+      });
+    }
+
+    const edges = [...edgeMap.values()]
+      .map(edge => ({
+        ...edge,
+        from: mergedNodes.get(edge.fromKey),
+        to: edge.toSink ? { x: centerX, y: parentY } : mergedNodes.get(edge.toKey),
+      }))
+      .filter(edge => edge.from && edge.to);
+
+    function nodeRect({ x, y, name, treeNum, color, active = false, count, keyId = treeNum }) {
       return (
-        <g key={treeNum} transform={`translate(${x}, ${y})`} style={{ cursor: treeNum === currentPath ? "default" : "pointer" }} onClick={() => treeNum !== currentPath && setCurrentPath(treeNum)}>
+        <g key={keyId} transform={`translate(${x}, ${y})`} style={{ cursor: treeNum === currentPath ? "default" : "pointer" }} onClick={() => treeNum !== currentPath && setCurrentPath(treeNum)}>
+          <title>{name} · {treeNum}</title>
           <rect width={CHIP_W} height={CHIP_H} rx="5" fill={active ? color + "30" : "#151922"} stroke={active ? color : color + "55"} strokeWidth="1" />
-          <text x="8" y="12" fill={active ? "#ffffff" : "#ffffffc8"} fontFamily="IBM Plex Mono, monospace" fontSize="7.5">
+          <text x="8" y="11" fill={active ? "#ffffff" : "#ffffffc8"} fontFamily="IBM Plex Mono, monospace" fontSize="7.5">
             {name.length > 22 ? name.slice(0, 20) + "..." : name}
           </text>
           <text x="8" y="23" fill={color} fontFamily="IBM Plex Mono, monospace" fontSize="6.3">
@@ -1673,16 +1723,17 @@ function CategoryDagSwitcher({ data }) {
 
     return (
       <div style={{ overflowX: "auto", paddingBottom: 6 }}>
-        <svg width={svgWidth} height={svgHeight} style={{ display: "block", minWidth: "100%" }}>
-          {pathNodes.slice(0, -1).map((node, index) => {
-            const sx = centerX + CHIP_W / 2;
-            const sy = TOP + index * PATH_GAP + CHIP_H;
-            const tx = centerX + CHIP_W / 2;
-            const ty = TOP + (index + 1) * PATH_GAP;
+        <svg width={svgWidth} height={svgHeight} style={{ display: "block", margin: "0 auto" }}>
+          {edges.map(edge => {
+            const fromX = edge.from.x + CHIP_W / 2;
+            const fromY = edge.from.y + CHIP_H;
+            const toX = edge.to.x + CHIP_W / 2;
+            const toY = edge.to.y;
+            const elbow = fromY + Math.max(14, (toY - fromY) / 2);
             return (
               <path
-                key={`${node.treeNum}-path-edge`}
-                d={`M ${sx} ${sy} V ${ty}`}
+                key={edge.toSink ? `${edge.fromKey}->sink` : `${edge.fromKey}->${edge.toKey}`}
+                d={`M ${fromX} ${fromY} V ${elbow} H ${toX} V ${toY}`}
                 fill="none"
                 stroke="#ffffff2a"
                 strokeWidth="1.2"
@@ -1709,17 +1760,28 @@ function CategoryDagSwitcher({ data }) {
               />
             );
           })}
-          {pathNodes.map((node, index) => {
-            const treeNum = node.treeNum;
+          {[...mergedNodes.values()].map(node => {
+            const primaryTreeNum = [...node.treeNums][0];
             return nodeRect({
-              x: centerX,
-              y: TOP + index * PATH_GAP,
+              x: node.x,
+              y: node.y,
               name: node.name,
-              treeNum,
-              color: treeNum === "D" ? TREE_COLOR : chemColor(treeNum.slice(0, 3)),
-              active: treeNum === currentPath,
-              count: treeNum === currentPath ? children.length : (childrenMap.get(treeNum) || []).length,
+              treeNum: primaryTreeNum,
+              color: primaryTreeNum === "D" ? TREE_COLOR : chemColor(primaryTreeNum.slice(0, 3)),
+              active: node.treeNums.has(currentPath),
+              count: node.treeNums.size > 1 ? 0 : (childrenMap.get(primaryTreeNum) || []).length,
+              keyId: node.key,
             });
+          })}
+          {nodeRect({
+            x: centerX,
+            y: parentY,
+            name: currentTitle,
+            treeNum: currentPath,
+            color: currentColor,
+            active: true,
+            count: children.length,
+            keyId: "selected-sink",
           })}
           {visibleChildren.map((child, index) => {
             const col = index % cols;
@@ -1731,6 +1793,7 @@ function CategoryDagSwitcher({ data }) {
               treeNum: child.treeNum,
               color: chemColor(child.treeNum.slice(0, 3)),
               count: (childrenMap.get(child.treeNum) || []).length,
+              keyId: `child-${child.treeNum}`,
             });
           })}
           {children.length > visibleChildren.length && (
@@ -1751,10 +1814,41 @@ function CategoryDagSwitcher({ data }) {
           Use the graph to move through the hierarchy. Search can jump to a descriptor placement.
         </div>
 
-        <section style={{ background: "#ffffff06", border: "1px solid #ffffff10", borderRadius: 7, padding: "14px 15px", marginBottom: 14, fontFamily: mono }}>
+        <section style={{ fontFamily: mono, marginBottom: 14 }}>
+          <div style={{ fontSize: 7, color: "#ffffff25", letterSpacing: 2, marginBottom: 8 }}>JUMP BY DESCRIPTOR</div>
+          <div style={{ display: "flex", alignItems: "center", background: "#ffffff0a", border: `1px solid ${q.length >= 2 ? TREE_COLOR + "77" : "#ffffff18"}`, borderRadius: 5, padding: "0 9px", marginBottom: 8 }}>
+            <span style={{ fontSize: 10, color: "#ffffff33", marginRight: 7 }}>⌕</span>
+            <input
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="search term..."
+              style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", fontFamily: mono, fontSize: 10, color: "#fff", padding: "9px 0", caretColor: TREE_COLOR }}
+            />
+          </div>
+          {searchResults.length > 0 && (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 5 }}>
+              {searchResults.map(term => {
+                const paths = term.treeNums.filter(n => n.startsWith("D")).sort();
+                const firstPath = paths[0];
+                return (
+                  <button
+                    key={term.ui}
+                    onClick={() => { if (firstPath) setCurrentPath(firstPath); setQuery(term.name); }}
+                    style={{ textAlign: "left", padding: "8px 9px", background: "#ffffff06", border: "1px solid #ffffff0f", borderRadius: 5, cursor: "pointer", fontFamily: mono }}
+                  >
+                    <div style={{ fontSize: 8.5, color: "#ffffffc8", lineHeight: 1.35 }}>{term.name}</div>
+                    <div style={{ fontSize: 7, color: "#ffffff33", marginTop: 4 }}>{paths.length} D placement{paths.length === 1 ? "" : "s"}</div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        <section style={{ background: "#ffffff06", border: "1px solid #ffffff10", borderRadius: 7, padding: "14px 15px", marginBottom: 14, fontFamily: mono, height: 142, minHeight: 142, maxHeight: 142, boxSizing: "border-box", overflow: "hidden" }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 14, alignItems: "start" }}>
             <div>
-              <div style={{ fontSize: 15, color: "#fff", lineHeight: 1.3 }}>{currentTerm?.name || "Chemicals and Drugs"}</div>
+              <div style={{ fontSize: 15, color: "#fff", lineHeight: 1.3 }}>{currentTitle}</div>
               <div style={{ fontSize: 8, color: currentColor, marginTop: 5 }}>{currentPath}</div>
             </div>
             <div style={{ display: "flex", gap: 7, flexShrink: 0 }}>
@@ -1770,11 +1864,9 @@ function CategoryDagSwitcher({ data }) {
               ))}
             </div>
           </div>
-          {currentTerm?.note && (
-            <div style={{ fontSize: 8.2, color: "#ffffff62", lineHeight: 1.55, marginTop: 11, maxWidth: 760 }}>
-              {currentTerm.note}
-            </div>
-          )}
+          <div style={{ fontSize: 8.2, color: "#ffffff62", lineHeight: 1.55, marginTop: 11, maxWidth: 760, maxHeight: 54, overflowY: "auto" }}>
+            {currentDescription}
+          </div>
         </section>
 
         <section style={{ marginBottom: 14 }}>
@@ -1789,34 +1881,6 @@ function CategoryDagSwitcher({ data }) {
           </div>
         </section>
 
-        <section style={{ fontFamily: mono }}>
-        <div style={{ fontSize: 7, color: "#ffffff25", letterSpacing: 2, marginBottom: 8 }}>JUMP BY DESCRIPTOR</div>
-        <div style={{ display: "flex", alignItems: "center", background: "#ffffff0a", border: `1px solid ${q.length >= 2 ? TREE_COLOR + "77" : "#ffffff18"}`, borderRadius: 5, padding: "0 9px", marginBottom: 11 }}>
-          <span style={{ fontSize: 10, color: "#ffffff33", marginRight: 7 }}>⌕</span>
-          <input
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="search term..."
-            style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", fontFamily: mono, fontSize: 10, color: "#fff", padding: "9px 0", caretColor: TREE_COLOR }}
-          />
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 5 }}>
-          {searchResults.map(term => {
-            const paths = term.treeNums.filter(n => n.startsWith("D")).sort();
-            const firstPath = paths[0];
-            return (
-              <button
-                key={term.ui}
-                onClick={() => { if (firstPath) setCurrentPath(firstPath); setQuery(term.name); }}
-                style={{ textAlign: "left", padding: "8px 9px", background: "#ffffff06", border: "1px solid #ffffff0f", borderRadius: 5, cursor: "pointer", fontFamily: mono }}
-              >
-                <div style={{ fontSize: 8.5, color: "#ffffffc8", lineHeight: 1.35 }}>{term.name}</div>
-                <div style={{ fontSize: 7, color: "#ffffff33", marginTop: 4 }}>{paths.length} D placement{paths.length === 1 ? "" : "s"}</div>
-              </button>
-            );
-          })}
-        </div>
-        </section>
       </main>
     </div>
   );

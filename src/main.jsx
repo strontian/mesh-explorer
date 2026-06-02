@@ -21,7 +21,6 @@ import MeshZConcepts from "../mesh_z_concepts.jsx";
 // ── Top-level views ──────────────────────────────────────────────────────
 const TOP_TABS = [
   { id: "meshtrees", label: "MeSH Trees" },
-  { id: "swimlanes", label: "M · Named Groups" },
 ];
 
 // ── Concept-sketch trees (letter chips) ──────────────────────────────────
@@ -38,6 +37,7 @@ const CONCEPT_TREES = [
   { id: "j", letter: "J", label: "Technology",     color: "#E8C888", Comp: MeshJConcepts },
   { id: "k", letter: "K", label: "Humanities",     color: "#F0B8C8", Comp: MeshKConcepts },
   { id: "l", letter: "L", label: "Information",    color: "#A8C8E8", Comp: MeshLConcepts },
+  { id: "m", letter: "M", label: "Named Groups",   color: "#AED6F1", Comp: SwimLanes },
   { id: "n", letter: "N", label: "Health Care",    color: "#90D0B8", Comp: MeshNConcepts },
   { id: "v", letter: "V", label: "Publications",   color: "#C8C8A8", Comp: MeshVConcepts },
   { id: "z", letter: "Z", label: "Geographicals",  color: "#88C8D8", Comp: MeshZConcepts },
@@ -134,7 +134,7 @@ function App() {
 
       {active.kind === "top" && active.id === "meshtrees" && (
         <MeshCosmos
-          onNamedGroups={() => setActive({ kind: "top", id: "swimlanes" })}
+          onNamedGroups={() => setActive({ kind: "concept", id: "m" })}
           onPsychology={() => setActive({ kind: "concept", id: "f" })}
           onGeography={() => setActive({ kind: "concept", id: "z" })}
           onPublications={() => setActive({ kind: "concept", id: "v" })}
@@ -142,7 +142,6 @@ function App() {
           onChemicals={() => setActive({ kind: "concept", id: "d" })}
         />
       )}
-      {active.kind === "top" && active.id === "swimlanes" && <SwimLanes />}
       {active.kind === "concept" && (() => {
         const tree = CONCEPT_TREES.find((t) => t.id === active.id);
         if (!tree) return null;
