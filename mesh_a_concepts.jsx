@@ -1,5 +1,11 @@
 import { useState, useEffect } from "react";
 import { LoadingMesh, OverviewDetailExplorer, useMeshTreeData } from "./mesh_overview_concept.jsx";
+import { BODY_SILHOUETTE_PATH } from "./mesh_c_concepts.jsx";
+import {
+  FloatingMeshDetailPanel,
+  FloatingMeshQueryPanel,
+  usePersistentMeshQueries,
+} from "./mesh_query_ui.jsx";
 
 const mono = "'IBM Plex Mono', monospace";
 const BG = "#0f1117";
@@ -509,6 +515,7 @@ function AnatomyBodyMap({ data }) {
   const [selectedTag, setSelectedTag] = useState(null);
   const [expandedNodes, setExpandedNodes] = useState([]);
   const [hovered, setHovered] = useState(null);
+  const queryBuilder = usePersistentMeshQueries();
 
   const byTN = new Map(branches.map(branch => [branch.treeNum, branch]));
   const treeIndex = new Map();
@@ -566,6 +573,7 @@ function AnatomyBodyMap({ data }) {
           const childCount = getChildren(treeNum).length;
           const active = selectedTag === treeNum;
           const open = isExpanded(treeNum);
+          const collected = queryBuilder.allIds.has(term.name);
           return (
             <button
               key={treeNum}
@@ -583,13 +591,13 @@ function AnatomyBodyMap({ data }) {
                 minHeight: 22,
                 maxWidth: "100%",
                 padding: "4px 8px",
-                background: active ? color + "30" : open ? color + "20" : color + "10",
-                border: `1px solid ${active || open ? color + "88" : color + "30"}`,
+                background: active ? color + "30" : open ? color + "20" : collected ? color + "1d" : color + "10",
+                border: `1px solid ${active || open ? color + "88" : collected ? color + "66" : color + "30"}`,
                 borderRadius: 999,
                 cursor: "pointer",
                 fontFamily: mono,
                 fontSize: 8,
-                color: active ? "#fff" : "#ffffffb8",
+                color: active ? "#fff" : collected ? color : "#ffffffb8",
                 lineHeight: 1.25,
               }}
             >
@@ -622,6 +630,29 @@ function AnatomyBodyMap({ data }) {
   const activeBranch = byTN.get(selectedRoot);
   const activeColor = A_BRANCH_COLORS[selectedRoot] || TREE_COLOR;
   const activeChildren = getChildren(activeTreeNum);
+  const selectedDetail = activeEntry ? {
+    id: activeEntry.term.name,
+    branch: "a",
+    color: activeColor,
+    treeNum: activeTreeNum,
+    ui: activeEntry.term.ui,
+    note: activeEntry.term.note || activeEntry.term.scopeNote,
+  } : null;
+  const zoneFill = (treeNum) => selectedRoot === treeNum || hovered === treeNum ? (A_BRANCH_COLORS[treeNum] || TREE_COLOR) + "2e" : "#ffffff0a";
+  const zoneStroke = (treeNum) => selectedRoot === treeNum ? (A_BRANCH_COLORS[treeNum] || TREE_COLOR) : hovered === treeNum ? (A_BRANCH_COLORS[treeNum] || TREE_COLOR) + "99" : "#ffffff1a";
+  const zoneWidth = (treeNum) => selectedRoot === treeNum ? 2 : 1;
+  const callouts = [
+    ["A08", 112, 116, 232, 126, 18, 120, "A08 Nervous System"],
+    ["A09", 112, 143, 238, 130, 18, 147, "A09 Sense Organs"],
+    ["A14", 112, 196, 226, 195, 8, 200, "A14 Stomatognathic"],
+    ["A04", 112, 252, 180, 252, 18, 256, "A04 Respiratory"],
+    ["A07", 388, 247, 291, 247, 396, 251, "A07 Cardiovascular"],
+    ["A15", 388, 278, 318, 278, 396, 282, "A15 Hemic & Immune"],
+    ["A03", 112, 332, 172, 332, 18, 336, "A03 Digestive"],
+    ["A05", 388, 407, 322, 407, 396, 411, "A05 Urogenital"],
+    ["A02", 388, 470, 338, 430, 396, 474, "A02 Musculoskeletal"],
+    ["A17", 112, 560, 206, 560, 24, 564, "A17 Integumentary"],
+  ];
 
   return (
     <div style={{ height: "100%", overflow: "hidden", display: "grid", gridTemplateColumns: "minmax(360px, 0.9fr) minmax(440px, 1.1fr)", background: BG }}>
@@ -632,52 +663,35 @@ function AnatomyBodyMap({ data }) {
         </div>
 
         <div style={{ border: "1px solid #ffffff14", borderRadius: 8, background: "linear-gradient(180deg,#ffffff05,transparent)", padding: 10, marginBottom: 12 }}>
-          <svg viewBox="0 0 520 700" style={{ display: "block", width: "100%", maxHeight: 590 }}>
-            <g opacity="0.9">
-              <ellipse cx="248" cy="92" rx="38" ry="48" fill="#ffffff12" stroke="#ffffff2a" />
-              <rect x="208" y="142" width="80" height="48" rx="20" fill="#ffffff10" stroke="#ffffff24" />
-              <rect x="172" y="190" width="152" height="220" rx="48" fill="#ffffff12" stroke="#ffffff2a" />
-              <path d="M172 218 C130 260 128 370 150 452" fill="none" stroke="#ffffff26" strokeWidth="34" strokeLinecap="round" />
-              <path d="M324 218 C366 260 368 370 346 452" fill="none" stroke="#ffffff26" strokeWidth="34" strokeLinecap="round" />
-              <path d="M214 410 C194 505 190 610 204 676" fill="none" stroke="#ffffff26" strokeWidth="36" strokeLinecap="round" />
-              <path d="M282 410 C302 505 306 610 292 676" fill="none" stroke="#ffffff26" strokeWidth="36" strokeLinecap="round" />
-            </g>
+          <svg viewBox="0 0 523 740" style={{ display: "block", width: "100%", maxHeight: 590, margin: "0 auto" }} aria-label="Anatomy body selector">
+            <path d={BODY_SILHOUETTE_PATH} fill="#ffffff14" stroke="#ffffff33" strokeWidth={1.5} />
+            <path d={BODY_SILHOUETTE_PATH} fill="transparent" stroke={selectedRoot === "A17" || hovered === "A17" ? A_BRANCH_COLORS.A17 : "transparent"} strokeWidth={selectedRoot === "A17" ? 4 : 3} style={{ cursor: "pointer", pointerEvents: "stroke", transition: "stroke 0.15s" }} onClick={() => selectRoot("A17")} onMouseEnter={() => setHovered("A17")} onMouseLeave={() => setHovered(null)} />
 
-            {BODY_REGIONS.map(region => {
-              const active = selectedRoot === region.treeNum;
-              const hot = active || hovered === region.treeNum;
-              const branch = byTN.get(region.treeNum);
-              const isSkin = region.treeNum === "A17";
+            <ellipse onClick={() => selectRoot("A08")} onMouseEnter={() => setHovered("A08")} onMouseLeave={() => setHovered(null)} cx={249} cy={135} rx={34} ry={42} fill={zoneFill("A08")} stroke={zoneStroke("A08")} strokeWidth={zoneWidth("A08")} style={{ cursor:"pointer", transition:"all 0.15s" }} />
+            <ellipse onClick={() => selectRoot("A09")} onMouseEnter={() => setHovered("A09")} onMouseLeave={() => setHovered(null)} cx={238} cy={130} rx={11} ry={9} fill={zoneFill("A09")} stroke={zoneStroke("A09")} strokeWidth={zoneWidth("A09")} style={{ cursor:"pointer", transition:"all 0.15s" }} />
+            <ellipse onClick={() => selectRoot("A09")} onMouseEnter={() => setHovered("A09")} onMouseLeave={() => setHovered(null)} cx={260} cy={130} rx={11} ry={9} fill={zoneFill("A09")} stroke={zoneStroke("A09")} strokeWidth={zoneWidth("A09")} style={{ cursor:"pointer", transition:"all 0.15s" }} />
+            <rect onClick={() => selectRoot("A14")} onMouseEnter={() => setHovered("A14")} onMouseLeave={() => setHovered(null)} x={228} y={178} width={42} height={34} rx={12} fill={zoneFill("A14")} stroke={zoneStroke("A14")} strokeWidth={zoneWidth("A14")} style={{ cursor:"pointer", transition:"all 0.15s" }} />
+            <rect onClick={() => selectRoot("A04")} onMouseEnter={() => setHovered("A04")} onMouseLeave={() => setHovered(null)} x={180} y={220} width={66} height={78} rx={18} fill={zoneFill("A04")} stroke={zoneStroke("A04")} strokeWidth={zoneWidth("A04")} style={{ cursor:"pointer", transition:"all 0.15s" }} />
+            <rect onClick={() => selectRoot("A07")} onMouseEnter={() => setHovered("A07")} onMouseLeave={() => setHovered(null)} x={247} y={220} width={44} height={78} rx={16} fill={zoneFill("A07")} stroke={zoneStroke("A07")} strokeWidth={zoneWidth("A07")} style={{ cursor:"pointer", transition:"all 0.15s" }} />
+            <rect onClick={() => selectRoot("A15")} onMouseEnter={() => setHovered("A15")} onMouseLeave={() => setHovered(null)} x={292} y={220} width={26} height={78} rx={12} fill={zoneFill("A15")} stroke={zoneStroke("A15")} strokeWidth={zoneWidth("A15")} style={{ cursor:"pointer", transition:"all 0.15s" }} />
+            <rect onClick={() => selectRoot("A03")} onMouseEnter={() => setHovered("A03")} onMouseLeave={() => setHovered(null)} x={172} y={300} width={78} height={74} rx={18} fill={zoneFill("A03")} stroke={zoneStroke("A03")} strokeWidth={zoneWidth("A03")} style={{ cursor:"pointer", transition:"all 0.15s" }} />
+            <rect onClick={() => selectRoot("A05")} onMouseEnter={() => setHovered("A05")} onMouseLeave={() => setHovered(null)} x={176} y={376} width={146} height={62} rx={24} fill={zoneFill("A05")} stroke={zoneStroke("A05")} strokeWidth={zoneWidth("A05")} style={{ cursor:"pointer", transition:"all 0.15s" }} />
+            {[
+              "M170,232 C162,290 159,350 157,408 C161,420 172,418 174,405 C178,350 182,295 188,240 C184,234 176,231 170,232 Z",
+              "M329,232 C337,290 340,350 342,408 C338,420 327,418 325,405 C321,350 317,295 311,240 C315,234 323,231 329,232 Z",
+              "M205,442 C193,510 189,590 195,650 C198,668 210,670 214,652 C220,590 224,510 245,446 C232,440 218,440 205,442 Z",
+              "M294,442 C306,510 310,590 304,650 C301,668 289,670 285,652 C279,590 275,510 254,446 C267,440 281,440 294,442 Z",
+            ].map((d, i) => (
+              <path key={i} onClick={() => selectRoot("A02")} onMouseEnter={() => setHovered("A02")} onMouseLeave={() => setHovered(null)} d={d} fill={zoneFill("A02")} stroke={zoneStroke("A02")} strokeWidth={zoneWidth("A02")} style={{ cursor:"pointer", transition:"all 0.15s" }} />
+            ))}
+
+            {callouts.map(([id, x1, y1, x2, y2, tx, ty, label]) => {
+              const color = A_BRANCH_COLORS[id] || TREE_COLOR;
+              const active = selectedRoot === id || hovered === id;
               return (
-                <g
-                  key={region.treeNum}
-                  onClick={() => selectRoot(region.treeNum)}
-                  onMouseEnter={() => setHovered(region.treeNum)}
-                  onMouseLeave={() => setHovered(null)}
-                  style={{ cursor: "pointer" }}
-                >
-                  {isSkin ? (
-                    <rect x="150" y="54" width="196" height="628" rx="98" fill="transparent" stroke={hot ? region.color : "#ffffff12"} strokeWidth={active ? 3 : 1.5} strokeDasharray="4 7" />
-                  ) : (
-                    <rect
-                      x={region.x - region.w / 2}
-                      y={region.y - region.h / 2}
-                      width={region.w}
-                      height={region.h}
-                      rx="16"
-                      fill={hot ? region.color + "30" : region.color + "10"}
-                      stroke={hot ? region.color : region.color + "38"}
-                      strokeWidth={active ? 2 : 1}
-                    />
-                  )}
-                  <text x={region.x} y={region.y + 3} textAnchor="middle" fontFamily="IBM Plex Mono, monospace" fontSize="8" fill={hot ? "#fff" : region.color}>
-                    {region.treeNum}
-                  </text>
-                  {hot && (
-                    <text x={region.x} y={region.y + 17} textAnchor="middle" fontFamily="IBM Plex Mono, monospace" fontSize="7" fill={region.color}>
-                      {branch?.directCount || 0} direct
-                    </text>
-                  )}
+                <g key={id} onClick={() => selectRoot(id)} onMouseEnter={() => setHovered(id)} onMouseLeave={() => setHovered(null)} style={{ cursor:"pointer" }}>
+                  <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={active ? color : "#ffffff33"} strokeWidth={1} />
+                  <text x={tx} y={ty} fontFamily={mono} fontSize={8.4} fill={active ? color : "#ffffff55"}>{label}</text>
                 </g>
               );
             })}
@@ -694,7 +708,7 @@ function AnatomyBodyMap({ data }) {
                 key={treeNum}
                 type="button"
                 onClick={() => selectRoot(treeNum)}
-                style={{ padding: "6px 9px", display: "inline-flex", alignItems: "center", gap: 6, fontFamily: mono, fontSize: 8, background: active ? color + "20" : "#ffffff06", border: `1px solid ${active ? color : "#ffffff0f"}`, borderRadius: 999, color: active ? "#fff" : "#ffffff70", cursor: "pointer" }}
+                style={{ padding: "6px 9px", display: "inline-flex", alignItems: "center", gap: 6, fontFamily: mono, fontSize: 8, background: active ? color + "20" : queryBuilder.allIds.has(branch?.term.name) ? color + "18" : "#ffffff06", border: `1px solid ${active ? color : queryBuilder.allIds.has(branch?.term.name) ? color + "66" : "#ffffff0f"}`, borderRadius: 999, color: active ? "#fff" : queryBuilder.allIds.has(branch?.term.name) ? color : "#ffffff70", cursor: "pointer" }}
               >
                 <span style={{ color }}>{treeNum}</span>
                 <span>{branch?.term.name || treeNum}</span>
@@ -741,6 +755,8 @@ function AnatomyBodyMap({ data }) {
           </div>
         </div>
       </section>
+      <FloatingMeshDetailPanel selected={selectedDetail} query={queryBuilder} />
+      <FloatingMeshQueryPanel query={queryBuilder} />
     </div>
   );
 }

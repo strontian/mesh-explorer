@@ -1,4 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
+import {
+  FloatingMeshDetailPanel,
+  FloatingMeshQueryPanel,
+  usePersistentMeshQueries,
+} from "./mesh_query_ui.jsx";
 
 const mono = "'IBM Plex Mono', monospace";
 const BG = "#0f1117";
@@ -68,6 +73,7 @@ export function OverviewDetailExplorer({
   defaultCluster,
 }) {
   const { branches, childrenMap, countDescendants } = data;
+  const queryBuilder = usePersistentMeshQueries();
   const firstCluster = useMemo(() => {
     for (const branch of branches) {
       const children = childrenMap.get(branch.treeNum) || [];
@@ -134,6 +140,18 @@ export function OverviewDetailExplorer({
     if (getChildren(treeNum).length > 0) toggleExpanded(treeNum);
   }
 
+  const activeTreeNum = selectedTag || selectedLayer || branches[0]?.treeNum;
+  const activeEntry = activeTreeNum ? treeIndex.get(activeTreeNum) : null;
+  const activeColor = activeTreeNum ? rootColor(activeTreeNum) : treeColor;
+  const selectedDetail = activeEntry ? {
+    id:activeEntry.term.name,
+    branch:treeLetter.toLowerCase(),
+    color:activeColor,
+    treeNum:activeTreeNum,
+    ui:activeEntry.term.ui,
+    note:activeEntry.term.note || activeEntry.term.scopeNote,
+  } : null;
+
   function renderDetail() {
     const activeTreeNum = selectedTag || selectedLayer || branches[0]?.treeNum;
     const entry = treeIndex.get(activeTreeNum);
@@ -185,6 +203,7 @@ export function OverviewDetailExplorer({
           const childCount = getChildren(treeNum).length;
           const active = selectedTag === treeNum;
           const open = isExpanded(treeNum);
+          const collected = queryBuilder.allIds.has(term.name);
           return (
             <button
               key={treeNum}
@@ -202,13 +221,13 @@ export function OverviewDetailExplorer({
                 width: "fit-content",
                 maxWidth: "100%",
                 padding: "4px 8px",
-                background: active ? color + "30" : open ? color + "20" : color + "10",
-                border: `1px solid ${active || open ? color + "88" : color + "30"}`,
+                background: active ? color + "30" : open ? color + "20" : collected ? color + "1d" : color + "10",
+                border: `1px solid ${active || open ? color + "88" : collected ? color + "66" : color + "30"}`,
                 borderRadius: 999,
                 cursor: "pointer",
                 fontFamily: mono,
                 fontSize: 8,
-                color: active ? "#fff" : "#ffffffb8",
+                color: active ? "#fff" : collected ? color : "#ffffffb8",
                 lineHeight: 1.25,
               }}
             >
@@ -237,14 +256,12 @@ export function OverviewDetailExplorer({
   }
 
   return (
-    <div style={{ height: "100%", overflowY: "auto", padding: 24 }}>
+    <div style={{ height: "100%", overflowY: "auto", padding: 24, paddingBottom: 230 }}>
       <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff33", letterSpacing: 2, marginBottom: 16 }}>
         {eyebrow}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "320px minmax(420px, 1fr)", gap: 16, alignItems: "start" }}>
-        {renderDetail()}
-
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(420px, 1fr)", gap: 16, alignItems: "start" }}>
         <main style={{ display: "grid", gap: 14 }}>
           {branches.map(branch => {
             const color = branch.color;
@@ -270,6 +287,7 @@ export function OverviewDetailExplorer({
                     const active = selectedLayer === treeNum;
                     const childCount = getChildren(treeNum).length;
                     const descendants = countDescendants(treeNum);
+                    const collected = queryBuilder.allIds.has(term.name);
                     return (
                       <button
                         key={treeNum}
@@ -282,13 +300,13 @@ export function OverviewDetailExplorer({
                           minHeight: 28,
                           maxWidth: "100%",
                           padding: "5px 9px",
-                          background: active ? color + "2e" : color + "10",
-                          border: `1px solid ${active ? color + "90" : color + "30"}`,
+                          background: active ? color + "2e" : collected ? color + "1d" : color + "10",
+                          border: `1px solid ${active ? color + "90" : collected ? color + "66" : color + "30"}`,
                           borderRadius: 999,
                           cursor: "pointer",
                           fontFamily: mono,
                           fontSize: 8.5,
-                          color: active ? "#fff" : "#ffffffc4",
+                          color: active ? "#fff" : collected ? color : "#ffffffc4",
                           lineHeight: 1.2,
                         }}
                       >
@@ -320,6 +338,9 @@ export function OverviewDetailExplorer({
           })}
         </main>
       </div>
+
+      <FloatingMeshDetailPanel selected={selectedDetail} query={queryBuilder} />
+      <FloatingMeshQueryPanel query={queryBuilder} />
     </div>
   );
 }

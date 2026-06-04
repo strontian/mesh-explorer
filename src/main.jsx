@@ -1,4 +1,4 @@
-import { StrictMode, useState } from "react";
+import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import MeshCosmos from "../mesh_cosmos.jsx";
 import SwimLanes from "../mesh_swimlanes.jsx";
@@ -17,11 +17,10 @@ import MeshLConcepts from "../mesh_l_concepts.jsx";
 import MeshNConcepts from "../mesh_n_concepts.jsx";
 import MeshVConcepts from "../mesh_v_concepts.jsx";
 import MeshZConcepts from "../mesh_z_concepts.jsx";
-
-// ── Top-level views ──────────────────────────────────────────────────────
-const TOP_TABS = [
-  { id: "meshtrees", label: "MeSH Trees" },
-];
+import {
+  GlobalMeshSearchOverlay,
+  usePersistentMeshQueries,
+} from "../mesh_query_ui.jsx";
 
 // ── Concept-sketch trees (letter chips) ──────────────────────────────────
 const CONCEPT_TREES = [
@@ -47,42 +46,14 @@ const CONCEPT_TREES = [
 const NAV_BG = "#0a0c12";
 const MONO = "'IBM Plex Mono', monospace";
 
-const NAV_TOP = {
-  display: "flex",
-  alignItems: "center",
-  gap: 2,
-  padding: "10px 16px 8px",
-  background: NAV_BG,
-};
 const NAV_BOTTOM = {
   display: "flex",
   alignItems: "center",
   flexWrap: "wrap",
   gap: 4,
-  padding: "0 16px 10px",
+  padding: "10px 16px",
   borderBottom: "1px solid #1e2130",
   background: NAV_BG,
-};
-
-const TOP_TAB = (active) => ({
-  padding: "6px 14px",
-  fontSize: "12px",
-  fontFamily: "inherit",
-  cursor: "pointer",
-  border: "none",
-  borderRadius: 4,
-  background: active ? "#1e2740" : "transparent",
-  color: active ? "#AED6F1" : "#666",
-  letterSpacing: "0.04em",
-});
-
-const CONCEPT_LABEL = {
-  fontFamily: MONO,
-  fontSize: 8,
-  color: "#ffffff33",
-  letterSpacing: 2,
-  marginRight: 8,
-  paddingLeft: 2,
 };
 
 const LETTER_CHIP = (active, color) => ({
@@ -104,21 +75,45 @@ const LETTER_CHIP = (active, color) => ({
 
 function App() {
   const [active, setActive] = useState({ kind: "top", id: "meshtrees" });
+  const [searchOpen, setSearchOpen] = useState(false);
+  const queryBuilder = usePersistentMeshQueries();
 
-  const topActive  = (id) => active.kind === "top"     && active.id === id;
   const treeActive = (id) => active.kind === "concept" && active.id === id;
+  const allTreesActive = active.kind === "top" && active.id === "meshtrees";
+
+  useEffect(() => {
+    const handler = event => {
+      const target = event.target;
+      const typing = target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setSearchOpen(true);
+      }
+      if (!typing && event.key === "/") {
+        event.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  function navigateSearchResult(result) {
+    const tree = CONCEPT_TREES.find(item => item.letter === result.tree);
+    if (tree) setActive({ kind:"concept", id:tree.id });
+  }
 
   return (
     <>
-      <nav style={NAV_TOP}>
-        {TOP_TABS.map((t) => (
-          <button key={t.id} style={TOP_TAB(topActive(t.id))} onClick={() => setActive({ kind: "top", id: t.id })}>
-            {t.label}
-          </button>
-        ))}
-      </nav>
       <nav style={NAV_BOTTOM}>
-        <span style={CONCEPT_LABEL}>CONCEPT SKETCHES ▸</span>
+        <button
+          style={LETTER_CHIP(allTreesActive, "#AED6F1")}
+          onClick={() => setActive({ kind: "top", id: "meshtrees" })}
+          title="All Trees"
+        >
+          <span>All</span>
+          <span style={{ fontWeight: 400, fontSize: 9, opacity: allTreesActive ? 1 : 0.7 }}>All Trees</span>
+        </button>
         {CONCEPT_TREES.map((t) => (
           <button
             key={t.id}
@@ -130,6 +125,12 @@ function App() {
             <span style={{ fontWeight: 400, fontSize: 9, opacity: treeActive(t.id) ? 1 : 0.7 }}>{t.label}</span>
           </button>
         ))}
+        <button
+          onClick={() => setSearchOpen(true)}
+          style={{ marginLeft:"auto", padding:"5px 10px", fontFamily:MONO, fontSize:9, color:"#ffffff55", background:"#ffffff08", border:"1px solid #ffffff16", borderRadius:4, cursor:"pointer" }}
+        >
+          Search <span style={{ color:"#ffffff28" }}>⌘K</span>
+        </button>
       </nav>
 
       {active.kind === "top" && active.id === "meshtrees" && (
@@ -148,6 +149,12 @@ function App() {
         const Comp = tree.Comp;
         return <Comp />;
       })()}
+      <GlobalMeshSearchOverlay
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        onNavigate={navigateSearchResult}
+        queryBuilder={queryBuilder}
+      />
     </>
   );
 }

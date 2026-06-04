@@ -1157,6 +1157,7 @@ function TreeSwitcher({ data }) {
   const currentTerm = nodeByPath.get(currentPath);
   const currentLineage = lineage(currentPath);
   const selectedTerm = nodeByPath.get(selectedPath);
+  const selectedColor = selectedPath === "D" ? TREE_COLOR : chemColor(selectedPath.slice(0, 3));
   const selectedParentPath = parentOf(selectedPath);
   const selectedChildren = (childrenMap.get(selectedPath) || []).sort((a, b) =>
     a.term.name.localeCompare(b.term.name)
@@ -1293,7 +1294,7 @@ function TreeSwitcher({ data }) {
 
     return (
       <div style={{ overflowX: "auto", overflowY: "hidden", paddingBottom: 6, maxHeight: isVertical ? 520 : "none" }}>
-        <svg width={svgWidth} height={svgHeight} style={{ display: "block", minWidth: "100%" }}>
+        <svg width={svgWidth} height={svgHeight} style={{ display: "block", margin: "0 auto" }}>
           <g>
             {drawableConnectors.map(edge => {
               const sx = isVertical ? edge.from.x + CHIP_W / 2 : edge.from.x + CHIP_W;
@@ -1420,7 +1421,7 @@ function TreeSwitcher({ data }) {
             <div>
               <div style={{ fontSize: 7, color: "#ffffff25", letterSpacing: 2, marginBottom: 6 }}>SELECTED NODE</div>
               <div style={{ fontSize: 15, color: "#fff", lineHeight: 1.3 }}>{selectedTerm?.name || "Chemicals and Drugs"}</div>
-              <div style={{ fontSize: 8, color: TREE_COLOR, marginTop: 5 }}>{selectedPath}</div>
+              <div style={{ fontSize: 8, color: selectedColor, marginTop: 5 }}>{selectedPath}</div>
             </div>
             <div style={{ display: "flex", gap: 7, flexShrink: 0 }}>
               {[
@@ -1446,39 +1447,6 @@ function TreeSwitcher({ data }) {
           <div style={{ fontFamily: mono, fontSize: 7, color: "#ffffff25", letterSpacing: 2, marginBottom: 8 }}>PLACEMENT GRAPH · TOP TO BOTTOM</div>
           <div style={{ background: "#ffffff04", border: "1px solid #ffffff0d", borderRadius: 7, padding: "10px 11px" }}>
             <PlacementDag paths={navigationPlacements.length ? navigationPlacements : [currentPath]} orientation="vertical" />
-          </div>
-        </section>
-
-        <section style={{ marginBottom: 14 }}>
-          <div style={{ fontFamily: mono, fontSize: 7, color: "#ffffff25", letterSpacing: 2, marginBottom: 8 }}>DEBUG · SOURCE PATHS</div>
-          <div style={{ display: "grid", gap: 7, background: "#ffffff04", border: "1px solid #ffffff0d", borderRadius: 7, padding: "10px 11px", fontFamily: mono }}>
-            {(navigationPlacements.length ? navigationPlacements : [currentPath]).map(path => {
-              const chain = lineage(path);
-              const color = chemColor(path.slice(0, 3));
-              return (
-                <div key={path} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 5 }}>
-                  {chain.map((node, i) => {
-                    const isLeaf = i === chain.length - 1;
-                    return (
-                      <span key={node.treeNum} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-                        <span style={{
-                          padding: "3px 6px",
-                          borderRadius: 4,
-                          background: isLeaf ? TREE_COLOR + "1e" : "#ffffff08",
-                          border: `1px solid ${isLeaf ? TREE_COLOR + "66" : "#ffffff12"}`,
-                          color: isLeaf ? "#fff" : "#ffffff9a",
-                          fontSize: isLeaf ? 8.2 : 7.6,
-                        }}>
-                          {node.name}
-                        </span>
-                        {!isLeaf && <span style={{ color: "#ffffff22", fontSize: 8 }}>/</span>}
-                      </span>
-                    );
-                  })}
-                  <span style={{ color, fontSize: 7, marginLeft: 4 }}>{path}</span>
-                </div>
-              );
-            })}
           </div>
         </section>
       </main>

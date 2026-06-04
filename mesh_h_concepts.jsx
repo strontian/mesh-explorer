@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
-import { OverviewConceptShell } from "./mesh_overview_concept.jsx";
+import {
+  FloatingMeshDetailPanel,
+  FloatingMeshQueryPanel,
+  usePersistentMeshQueries,
+} from "./mesh_query_ui.jsx";
 
 const mono = "'IBM Plex Mono', monospace";
 const BG = "#0f1117";
@@ -335,6 +339,7 @@ function DisciplinesOverviewMap({ data }) {
   const [selectedLayer, setSelectedLayer] = useState("H01.158");
   const [selectedTag, setSelectedTag] = useState(null);
   const [expandedNodes, setExpandedNodes] = useState([]);
+  const queryBuilder = usePersistentMeshQueries();
 
   const treeIndex = new Map();
   for (const branch of branches) treeIndex.set(branch.treeNum, { term: branch.term, treeNum: branch.treeNum });
@@ -398,43 +403,17 @@ function DisciplinesOverviewMap({ data }) {
     if (getChildren(treeNum).length > 0) toggleExpanded(treeNum);
   }
 
-  function renderDetail() {
-    const activeTreeNum = selectedTag || selectedLayer || "H";
-    const entry = treeIndex.get(activeTreeNum);
-    const color = activeTreeNum.startsWith("H02") ? H02_COLOR : activeTreeNum.startsWith("H01") ? H01_COLOR : TREE_COLOR;
-    if (!entry) return null;
-    const childCount = getChildren(activeTreeNum).length;
-    const descendants = countDescendants(activeTreeNum);
-    const note = entry.term.note || entry.term.scopeNote;
-
-    return (
-      <aside style={{
-        padding: 16,
-        background: "#ffffff06",
-        border: `1px solid ${color}36`,
-        borderRadius: 8,
-        height: "fit-content",
-        position: "sticky",
-        top: 18,
-      }}>
-        <div style={{ fontFamily: mono, fontSize: 7, color: color + "aa", letterSpacing: 1.6, marginBottom: 8 }}>
-          SELECTED DISCIPLINE
-        </div>
-        <div style={{ fontFamily: mono, fontSize: 18, color: "#ffffffee", fontWeight: 700, lineHeight: 1.2 }}>
-          {entry.term.name}
-        </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12, fontFamily: mono, fontSize: 8, color: "#ffffff50" }}>
-          <span>{activeTreeNum}</span>
-          <span>{entry.term.ui}</span>
-          <span>{childCount === 0 ? "leaf" : `${childCount} children`}</span>
-          {descendants > 0 && <span>{descendants.toLocaleString()} narrower</span>}
-        </div>
-        <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #ffffff10", fontFamily: mono, fontSize: 9.5, color: "#ffffff82", lineHeight: 1.6 }}>
-          {note || "No scope note available for this term."}
-        </div>
-      </aside>
-    );
-  }
+  const activeTreeNum = selectedTag || selectedLayer || "H";
+  const activeEntry = treeIndex.get(activeTreeNum);
+  const activeColor = activeTreeNum.startsWith("H02") ? H02_COLOR : activeTreeNum.startsWith("H01") ? H01_COLOR : TREE_COLOR;
+  const selectedDetail = activeEntry ? {
+    id:activeEntry.term.name,
+    branch:"disciplines",
+    color:activeColor,
+    treeNum:activeTreeNum,
+    ui:activeEntry.term.ui,
+    note:activeEntry.term.note || activeEntry.term.scopeNote,
+  } : null;
 
   function renderTags(parentTreeNum, color, depth = 0) {
     const children = getChildren(parentTreeNum);
@@ -449,6 +428,7 @@ function DisciplinesOverviewMap({ data }) {
           const childCount = getChildren(treeNum).length;
           const active = selectedTag === treeNum;
           const open = isExpanded(treeNum);
+          const collected = queryBuilder.allIds.has(term.name);
           return (
             <button
               key={treeNum}
@@ -466,13 +446,13 @@ function DisciplinesOverviewMap({ data }) {
                 width: "fit-content",
                 maxWidth: "100%",
                 padding: "4px 8px",
-                background: active ? color + "30" : open ? color + "20" : color + "10",
-                border: `1px solid ${active || open ? color + "88" : color + "30"}`,
+                background: active ? color + "30" : open ? color + "20" : collected ? color + "1d" : color + "10",
+                border: `1px solid ${active || open ? color + "88" : collected ? color + "66" : color + "30"}`,
                 borderRadius: 999,
                 cursor: "pointer",
                 fontFamily: mono,
                 fontSize: 8,
-                color: active ? "#fff" : "#ffffffb8",
+                color: active ? "#fff" : collected ? color : "#ffffffb8",
                 lineHeight: 1.25,
               }}
             >
@@ -501,14 +481,12 @@ function DisciplinesOverviewMap({ data }) {
   }
 
   return (
-    <div style={{ height: "100%", overflowY: "auto", padding: 24 }}>
+    <div style={{ height: "100%", overflowY: "auto", padding: 24, paddingBottom: 230 }}>
       <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff33", letterSpacing: 2, marginBottom: 16 }}>
-        DISCIPLINES — OVERVIEW WITH DETAIL PANEL
+        DISCIPLINES — OVERVIEW WITH QUERY BUILDER
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "320px minmax(420px, 1fr)", gap: 16, alignItems: "start" }}>
-        {renderDetail()}
-
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(420px, 1fr)", gap: 16, alignItems: "start" }}>
         <main style={{ display: "grid", gap: 14 }}>
           {branches.map(branch => {
             const color = branch.color;
@@ -534,6 +512,7 @@ function DisciplinesOverviewMap({ data }) {
                     const active = selectedLayer === treeNum;
                     const childCount = getChildren(treeNum).length;
                     const descendants = countDescendants(treeNum);
+                    const collected = queryBuilder.allIds.has(term.name);
                     return (
                       <button
                         key={treeNum}
@@ -546,13 +525,13 @@ function DisciplinesOverviewMap({ data }) {
                           minHeight: 28,
                           maxWidth: "100%",
                           padding: "5px 9px",
-                          background: active ? color + "2e" : color + "10",
-                          border: `1px solid ${active ? color + "90" : color + "30"}`,
+                          background: active ? color + "2e" : collected ? color + "1d" : color + "10",
+                          border: `1px solid ${active ? color + "90" : collected ? color + "66" : color + "30"}`,
                           borderRadius: 999,
                           cursor: "pointer",
                           fontFamily: mono,
                           fontSize: 8.5,
-                          color: active ? "#fff" : "#ffffffc4",
+                          color: active ? "#fff" : collected ? color : "#ffffffc4",
                           lineHeight: 1.2,
                         }}
                       >
@@ -584,6 +563,9 @@ function DisciplinesOverviewMap({ data }) {
           })}
         </main>
       </div>
+
+      <FloatingMeshDetailPanel selected={selectedDetail} query={queryBuilder} />
+      <FloatingMeshQueryPanel query={queryBuilder} />
     </div>
   );
 }
@@ -822,14 +804,25 @@ function AllTermsGrid({ data }) {
 }
 
 export default function MeshHConcepts() {
+  const { data, loading } = useHData();
+
   return (
-    <OverviewConceptShell
-      treeLetter="H"
-      navLabel="H · DISCIPLINES"
-      eyebrow="DISCIPLINES — KNOWLEDGE DOMAINS AND HEALTH PROFESSIONS"
-      treeColor={TREE_COLOR}
-      branchColors={{ H01: H01_COLOR, H02: H02_COLOR }}
-      defaultCluster="H01.158"
-    />
+    <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: BG }}>
+      <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
+      <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
+
+      <nav style={{ display: "flex", alignItems: "center", gap: 0, borderBottom: "2px solid #ffffff12", flexShrink: 0, background: "#0a0c10", overflowX: "auto" }}>
+        <div style={{ padding: "12px 20px", fontFamily: mono, fontSize: 9, color: "#ffffff33", letterSpacing: 2, flexShrink: 0 }}>
+          H · DISCIPLINES
+        </div>
+        <div style={{ padding: "12px 18px", fontFamily: mono, fontSize: 10, color: TREE_COLOR, borderBottom: `2px solid ${TREE_COLOR}`, marginBottom: "-2px", flexShrink: 0 }}>
+          Overview + Query
+        </div>
+      </nav>
+
+      <div style={{ flex: 1, overflow: "hidden" }}>
+        {loading ? <Loading /> : <DisciplinesOverviewMap data={data} />}
+      </div>
+    </div>
   );
 }
