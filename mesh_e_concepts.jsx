@@ -679,6 +679,8 @@ export default function MeshEConcepts() {
       treeLetter="E"
       navLabel="E · TECHNIQUES"
       eyebrow="TECHNIQUES — DIAGNOSIS, THERAPY, SURGERY, EQUIPMENT, AND INVESTIGATION"
+      pageTitle="Overview + Detail"
+      pageDescription="Methods and tools for clinical care, laboratory investigation, surgery, anesthesia, equipment, dentistry, and therapeutic intervention."
       treeColor={TREE_COLOR}
       branchColors={{
         E01: "#64B5F6",

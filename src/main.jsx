@@ -79,7 +79,6 @@ function App() {
   const queryBuilder = usePersistentMeshQueries();
 
   const treeActive = (id) => active.kind === "concept" && active.id === id;
-  const allTreesActive = active.kind === "top" && active.id === "meshtrees";
 
   useEffect(() => {
     const handler = event => {
@@ -107,12 +106,28 @@ function App() {
     <>
       <nav style={NAV_BOTTOM}>
         <button
-          style={LETTER_CHIP(allTreesActive, "#AED6F1")}
           onClick={() => setActive({ kind: "top", id: "meshtrees" })}
-          title="All Trees"
+          title="Tiled overview"
+          style={{
+            display:"flex",
+            alignItems:"center",
+            gap:7,
+            marginRight:8,
+            padding:"5px 10px 5px 0",
+            fontFamily:MONO,
+            fontSize:11,
+            fontWeight:700,
+            letterSpacing:0.4,
+            color:"#e8e8e8",
+            background:"transparent",
+            border:"none",
+            borderRight:"1px solid #ffffff16",
+            cursor:"pointer",
+            whiteSpace:"nowrap",
+          }}
         >
-          <span>All</span>
-          <span style={{ fontWeight: 400, fontSize: 9, opacity: allTreesActive ? 1 : 0.7 }}>All Trees</span>
+          <span style={{ width:7, height:7, borderRadius:2, background:"#AED6F1", boxShadow:"0 0 10px #AED6F166" }} />
+          <span>MeSH Tree Explorer</span>
         </button>
         {CONCEPT_TREES.map((t) => (
           <button
@@ -158,7 +173,6 @@ function App() {
     </>
   );
 }
-
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <App />

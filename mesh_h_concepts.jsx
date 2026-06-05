@@ -4,6 +4,7 @@ import {
   FloatingMeshQueryPanel,
   usePersistentMeshQueries,
 } from "./mesh_query_ui.jsx";
+import { MeshPageHeader } from "./mesh_page_header.jsx";
 
 const mono = "'IBM Plex Mono', monospace";
 const BG = "#0f1117";
@@ -811,14 +812,12 @@ export default function MeshHConcepts() {
       <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
       <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
 
-      <nav style={{ display: "flex", alignItems: "center", gap: 0, borderBottom: "2px solid #ffffff12", flexShrink: 0, background: "#0a0c10", overflowX: "auto" }}>
-        <div style={{ padding: "12px 20px", fontFamily: mono, fontSize: 9, color: "#ffffff33", letterSpacing: 2, flexShrink: 0 }}>
-          H · DISCIPLINES
-        </div>
-        <div style={{ padding: "12px 18px", fontFamily: mono, fontSize: 10, color: TREE_COLOR, borderBottom: `2px solid ${TREE_COLOR}`, marginBottom: "-2px", flexShrink: 0 }}>
-          Overview + Query
-        </div>
-      </nav>
+      <MeshPageHeader
+        letter="H"
+        title="Disciplines"
+        description="Fields of study and professional domains, organized as knowledge areas rather than body systems or concrete entities."
+        color={TREE_COLOR}
+      />
 
       <div style={{ flex: 1, overflow: "hidden" }}>
         {loading ? <Loading /> : <DisciplinesOverviewMap data={data} />}

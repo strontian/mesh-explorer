@@ -4,9 +4,22 @@ import {
   FloatingMeshQueryPanel,
   usePersistentMeshQueries,
 } from "./mesh_query_ui.jsx";
+import { MeshPageHeader } from "./mesh_page_header.jsx";
 
 const mono = "'IBM Plex Mono', monospace";
 const BG = "#0f1117";
+
+function treeTitleFromNavLabel(navLabel) {
+  return (navLabel.split("·")[1] || navLabel)
+    .trim()
+    .toLowerCase()
+    .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function sentenceFromEyebrow(eyebrow) {
+  const text = (eyebrow.split("—")[1] || eyebrow).trim().toLowerCase();
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) + "." : "";
+}
 
 export function LoadingMesh() {
   return (
@@ -69,6 +82,8 @@ export function OverviewDetailExplorer({
   treeLetter,
   navLabel,
   eyebrow,
+  pageTitle,
+  pageDescription,
   treeColor,
   defaultCluster,
 }) {
@@ -256,9 +271,14 @@ export function OverviewDetailExplorer({
   }
 
   return (
-    <div style={{ height: "100%", overflowY: "auto", padding: 24, paddingBottom: 230 }}>
-      <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff33", letterSpacing: 2, marginBottom: 16 }}>
-        {eyebrow}
+    <div style={{ height: "100%", overflowY: "auto", padding: 24, paddingTop: 0, paddingBottom: 230 }}>
+      <div style={{ margin: "0 -24px 20px" }}>
+        <MeshPageHeader
+          letter={treeLetter}
+          title={treeTitleFromNavLabel(navLabel)}
+          description={pageDescription || sentenceFromEyebrow(eyebrow)}
+          color={treeColor}
+        />
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "minmax(420px, 1fr)", gap: 16, alignItems: "start" }}>
@@ -349,6 +369,8 @@ export function OverviewConceptShell({
   treeLetter,
   navLabel,
   eyebrow,
+  pageTitle,
+  pageDescription,
   treeColor,
   branchColors,
   defaultCluster,
@@ -359,15 +381,6 @@ export function OverviewConceptShell({
     <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: BG }}>
       <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
 
-      <nav style={{ display: "flex", alignItems: "center", gap: 0, borderBottom: "2px solid #ffffff12", flexShrink: 0, background: "#0a0c10", overflowX: "auto" }}>
-        <div style={{ padding: "12px 20px", fontFamily: mono, fontSize: 9, color: "#ffffff33", letterSpacing: 2, flexShrink: 0 }}>
-          {navLabel}
-        </div>
-        <div style={{ padding: "12px 18px", fontFamily: mono, fontSize: 10, color: treeColor, borderBottom: `2px solid ${treeColor}`, marginBottom: "-2px", flexShrink: 0 }}>
-          Overview + Detail
-        </div>
-      </nav>
-
       <div style={{ flex: 1, overflow: "hidden" }}>
         {loading ? <LoadingMesh /> : (
           <OverviewDetailExplorer
@@ -375,6 +388,8 @@ export function OverviewConceptShell({
             treeLetter={treeLetter}
             navLabel={navLabel}
             eyebrow={eyebrow}
+            pageTitle={pageTitle}
+            pageDescription={pageDescription}
             treeColor={treeColor}
             defaultCluster={defaultCluster}
           />

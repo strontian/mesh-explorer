@@ -1,4 +1,10 @@
 import { useState, useEffect } from "react";
+import {
+  FloatingMeshDetailPanel,
+  FloatingMeshQueryPanel,
+  usePersistentMeshQueries,
+} from "./mesh_query_ui.jsx";
+import { MeshPageHeader } from "./mesh_page_header.jsx";
 
 const mono = "'IBM Plex Mono', monospace";
 const BG = "#0f1117";
@@ -392,6 +398,7 @@ function PsychologyOverview({ data }) {
   const [expandedByLayer, setExpandedByLayer] = useState({});
   const [expandedNodes, setExpandedNodes] = useState([]);
   const { branches, childrenMap } = data;
+  const queryBuilder = usePersistentMeshQueries();
 
   const LAYERS = [
     { treeNum: "F01", label: "Behavior / Mechanisms", phrase: "what people do and the mechanisms behind it", color: "#9B72CF" },
@@ -490,6 +497,7 @@ function PsychologyOverview({ data }) {
           const childCount = getChildren(treeNum).length;
           const open = isExpanded(treeNum);
           const active = selected === treeNum;
+          const collected = queryBuilder.allIds.has(term.name);
           return (
             <button
               key={treeNum}
@@ -506,9 +514,9 @@ function PsychologyOverview({ data }) {
                 gap: 4,
                 fontFamily: mono,
                 fontSize: 7.2,
-                color: active ? "#fff" : "#ffffffb8",
-                background: active ? color + "28" : open ? color + "20" : color + "0d",
-                border: `1px solid ${active || open ? color : color + "22"}`,
+                color: active ? "#fff" : collected ? color : "#ffffffb8",
+                background: active ? color + "28" : open ? color + "20" : collected ? color + "1d" : color + "0d",
+                border: `1px solid ${active || open ? color : collected ? color + "66" : color + "22"}`,
                 borderRadius: 12,
                 padding: "3px 7px",
                 cursor: "pointer",
@@ -539,6 +547,15 @@ function PsychologyOverview({ data }) {
     );
   }
 
+  const selectedDetail = selectedTerm ? {
+    id: selectedTerm.name,
+    branch: "f",
+    color: selectedLayer.color,
+    treeNum: selected,
+    ui: selectedTerm.ui,
+    note: selectedTerm.note || selectedTerm.scopeNote,
+  } : null;
+
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <div style={{ padding: "16px 24px 12px", borderBottom: "1px solid #ffffff0a", flexShrink: 0 }}>
@@ -549,7 +566,7 @@ function PsychologyOverview({ data }) {
       </div>
 
       <div style={{ flex: 1, display: "grid", gridTemplateColumns: "340px minmax(420px, 1fr)", overflow: "hidden" }}>
-        <aside style={{ borderRight: "1px solid #ffffff0a", padding: 20, overflowY: "auto" }}>
+        <aside style={{ borderRight: "1px solid #ffffff0a", padding: "20px 20px 230px", boxSizing: "border-box", overflowY: "auto" }}>
           <div style={{ fontFamily: mono, fontSize: 8, color: selectedLayer.color, letterSpacing: 2, marginBottom: 6 }}>{selected}</div>
           <div style={{ fontFamily: mono, fontSize: 13, color: "#ffffffdd", fontWeight: 600, lineHeight: 1.35 }}>{selectedTerm?.name}</div>
           <div style={{ fontFamily: mono, fontSize: 8.5, color: "#ffffff55", lineHeight: 1.55, marginTop: 8 }}>{selectedLayer.phrase}</div>
@@ -563,16 +580,17 @@ function PsychologyOverview({ data }) {
           </div>
         </aside>
 
-        <div style={{ padding: 22, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ padding: "22px 22px 230px", boxSizing: "border-box", overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
           {LAYERS.map((layer, idx) => {
             const branch = byId.get(layer.treeNum);
             const children = getChildren(layer.treeNum);
             const active = selectedRoot === layer.treeNum;
+            const branchCollected = queryBuilder.allIds.has(branch?.term.name);
             return (
               <div
                 key={layer.treeNum}
                 onClick={() => selectLayer(layer.treeNum)}
-                style={{ display: "grid", gridTemplateColumns: "92px minmax(0, 1fr)", gap: 14, padding: 16, background: active ? layer.color + "16" : "#ffffff06", border: `1px solid ${active ? layer.color : "#ffffff0f"}`, borderRadius: 8, cursor: "pointer" }}
+                style={{ display: "grid", gridTemplateColumns: "92px minmax(0, 1fr)", gap: 14, padding: 16, background: active ? layer.color + "16" : branchCollected ? layer.color + "0f" : "#ffffff06", border: `1px solid ${active ? layer.color : branchCollected ? layer.color + "55" : "#ffffff0f"}`, borderRadius: 8, cursor: "pointer" }}
               >
                 <div style={{ borderRight: `1px solid ${layer.color}33`, paddingRight: 12 }}>
                   <div style={{ fontFamily: mono, fontSize: 7, color: layer.color, letterSpacing: 2, marginBottom: 8 }}>LAYER {idx + 1}</div>
@@ -598,15 +616,18 @@ function PsychologyOverview({ data }) {
                     {layer.label} · {layer.phrase}
                   </div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 10 }}>
-                    {children.map(({ term, treeNum }) => (
-                      <button
-                        key={treeNum}
-                        onClick={(e) => { e.stopPropagation(); setSelected(treeNum); setExpandedByLayer(prev => ({ ...prev, [layer.treeNum]: treeNum })); setExpandedNodes([]); }}
-                        style={{ fontFamily: mono, fontSize: 7.5, color: selectedInline === treeNum ? "#fff" : layer.color + "dd", background: selectedInline === treeNum ? layer.color + "28" : layer.color + "12", border: `1px solid ${selectedInline === treeNum ? layer.color : layer.color + "2f"}`, borderRadius: 4, padding: "2px 6px", cursor: "pointer" }}
-                      >
-                        {term.name}
-                      </button>
-                    ))}
+                    {children.map(({ term, treeNum }) => {
+                      const collected = queryBuilder.allIds.has(term.name);
+                      return (
+                        <button
+                          key={treeNum}
+                          onClick={(e) => { e.stopPropagation(); setSelected(treeNum); setExpandedByLayer(prev => ({ ...prev, [layer.treeNum]: treeNum })); setExpandedNodes([]); }}
+                          style={{ fontFamily: mono, fontSize: 7.5, color: selectedInline === treeNum ? "#fff" : collected ? layer.color : layer.color + "dd", background: selectedInline === treeNum ? layer.color + "28" : collected ? layer.color + "1d" : layer.color + "12", border: `1px solid ${selectedInline === treeNum ? layer.color : collected ? layer.color + "66" : layer.color + "2f"}`, borderRadius: 4, padding: "2px 6px", cursor: "pointer" }}
+                        >
+                          {term.name}
+                        </button>
+                      );
+                    })}
                   </div>
 
                   {active && selectedInline && (
@@ -632,6 +653,8 @@ function PsychologyOverview({ data }) {
           })}
         </div>
       </div>
+      <FloatingMeshDetailPanel selected={selectedDetail} query={queryBuilder} />
+      <FloatingMeshQueryPanel query={queryBuilder} />
     </div>
   );
 }
@@ -643,11 +666,12 @@ export default function MeshFConcepts() {
     <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: BG }}>
       <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
 
-      <nav style={{ display: "flex", alignItems: "center", gap: 0, borderBottom: "2px solid #ffffff12", flexShrink: 0, background: "#0a0c10", overflowX: "auto" }}>
-        <div style={{ padding: "12px 20px", fontFamily: mono, fontSize: 9, color: "#ffffff33", letterSpacing: 2, flexShrink: 0 }}>
-          F · PSYCHOLOGY OVERVIEW
-        </div>
-      </nav>
+      <MeshPageHeader
+        letter="F"
+        title="Psychology"
+        description="Psychological and behavioral terms range from mental processes and behavior to disorders, social processes, and psychophysiology."
+        color={TREE_COLOR}
+      />
 
       <div style={{ flex: 1, overflow: "hidden" }}>
         {loading ? <Loading /> : <PsychologyOverview data={data} />}

@@ -1,4 +1,10 @@
 import { useState, useEffect } from "react";
+import {
+  FloatingMeshDetailPanel,
+  FloatingMeshQueryPanel,
+  usePersistentMeshQueries,
+} from "./mesh_query_ui.jsx";
+import { MeshPageHeader } from "./mesh_page_header.jsx";
 
 const mono = "'IBM Plex Mono', monospace";
 const BG = "#0f1117";
@@ -117,6 +123,7 @@ function ScaleOfObservation({ data }) {
   const [selectedTag, setSelectedTag] = useState(null);
   const [expandedNodes, setExpandedNodes] = useState([]);
   const { branches, childrenMap } = data;
+  const queryBuilder = usePersistentMeshQueries();
 
   const treeIndex = new Map();
   for (const b of branches) treeIndex.set(b.treeNum, { term: b.term, treeNum: b.treeNum });
@@ -176,6 +183,7 @@ function ScaleOfObservation({ data }) {
           const hasChildren = childTerms.length > 0;
           const open = isExpanded(childTreeNum);
           const active = selectedTag === childTreeNum;
+          const collected = queryBuilder.allIds.has(term.name);
           return (
             <button
               key={childTreeNum}
@@ -195,13 +203,13 @@ function ScaleOfObservation({ data }) {
                 maxWidth: "100%",
                 padding: "4px 8px",
                 marginTop: 5,
-                background: active ? color + "30" : open ? color + "22" : color + "11",
-                border: `1px solid ${active || open ? color + "88" : color + "30"}`,
+                background: active ? color + "30" : open ? color + "22" : collected ? color + "1d" : color + "11",
+                border: `1px solid ${active || open ? color + "88" : collected ? color + "66" : color + "30"}`,
                 borderRadius: 999,
                 cursor: "pointer",
               }}
             >
-              <div style={{ fontFamily: mono, fontSize: 8, color: active ? "#fff" : "#ffffffb8", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{term.name}</div>
+              <div style={{ fontFamily: mono, fontSize: 8, color: active ? "#fff" : collected ? color : "#ffffffb8", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{term.name}</div>
               {hasChildren && (
                 <div style={{ fontFamily: mono, fontSize: 7, color: color + "77" }}>
                   {childTerms.length}
@@ -316,10 +324,20 @@ function ScaleOfObservation({ data }) {
   const ungrouped = branches.filter(b => !scaleGroupFor(b.treeNum));
   const activeGroup = selected ? scaleGroupFor(selected) : null;
   const detailColor = activeGroup?.color || TREE_COLOR;
+  const activeTreeNum = selectedTag || selected;
+  const activeEntry = activeTreeNum ? treeIndex.get(activeTreeNum) : null;
+  const selectedDetail = activeEntry ? {
+    id: activeEntry.term.name,
+    branch: "g",
+    color: detailColor,
+    treeNum: activeTreeNum,
+    ui: activeEntry.term.ui,
+    note: activeEntry.term.note || activeEntry.term.scopeNote,
+  } : null;
 
   return (
     <div style={{ height: "100%", overflow: "hidden" }}>
-      <div style={{ height: "100%", padding: 24, overflowY: "auto", display: "flex", flexDirection: "column", gap: 0 }}>
+      <div style={{ height: "100%", padding: "24px 24px 230px", boxSizing: "border-box", overflowY: "auto", display: "flex", flexDirection: "column", gap: 0 }}>
         <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff33", letterSpacing: 2, marginBottom: 16 }}>
           SCALE OF OBSERVATION — from abstract/physical to whole organism
         </div>
@@ -352,6 +370,7 @@ function ScaleOfObservation({ data }) {
               <div style={{ flex: 1, padding: "16px 0 16px 16px", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginBottom: 0 }}>
                 {groupBranches.map(b => {
                   const isSel = selected === b.treeNum;
+                  const collected = queryBuilder.allIds.has(b.term.name);
                   return (
                     <button
                       key={b.treeNum}
@@ -364,9 +383,9 @@ function ScaleOfObservation({ data }) {
                       style={{
                         fontFamily: mono,
                         fontSize: 9.5,
-                        color: isSel ? "#fff" : group.color,
-                        background: isSel ? group.color + "28" : group.color + "12",
-                        border: `1px solid ${isSel ? group.color : group.color + "44"}`,
+                        color: isSel ? "#fff" : collected ? group.color : group.color,
+                        background: isSel ? group.color + "28" : collected ? group.color + "1d" : group.color + "12",
+                        border: `1px solid ${isSel ? group.color : collected ? group.color + "66" : group.color + "44"}`,
                         borderRadius: 6,
                         padding: "7px 12px",
                         cursor: "pointer",
@@ -424,6 +443,8 @@ function ScaleOfObservation({ data }) {
           </div>
         )}
       </div>
+      <FloatingMeshDetailPanel selected={selectedDetail} query={queryBuilder} />
+      <FloatingMeshQueryPanel query={queryBuilder} />
     </div>
   );
 }
@@ -711,14 +732,12 @@ export default function MeshGConcepts() {
     <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: BG }}>
       <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
 
-      <nav style={{ display: "flex", alignItems: "center", gap: 0, borderBottom: "2px solid #ffffff12", flexShrink: 0, background: "#0a0c10", overflowX: "auto" }}>
-        <div style={{ padding: "12px 20px", fontFamily: mono, fontSize: 9, color: "#ffffff33", letterSpacing: 2, flexShrink: 0 }}>
-          G · PHENOMENA
-        </div>
-        <div style={{ padding: "12px 18px", fontFamily: mono, fontSize: 10, color: TREE_COLOR, borderBottom: `2px solid ${TREE_COLOR}`, marginBottom: "-2px", flexShrink: 0 }}>
-          Scale of Observation
-        </div>
-      </nav>
+      <MeshPageHeader
+        letter="G"
+        title="Phenomena"
+        description="A scale-of-observation tree spanning abstract physical phenomena, molecular and cellular processes, organ systems, and whole-organism phenomena."
+        color={TREE_COLOR}
+      />
 
       <div style={{ flex: 1, overflow: "hidden" }}>
         {loading ? <Loading /> : <ScaleOfObservation data={data} />}

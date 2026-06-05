@@ -288,7 +288,7 @@ export function FloatingMeshQueryPanel({ query, left = 284, bottom = 16 }) {
           )}
         </div>
         {query.queries.length <= 1 && !editing && (
-          <button onClick={query.createEmpty} title="New query" style={{ background:"transparent", border:"1px dashed #ffffff1a", borderRadius:3, color:"#ffffff33", cursor:"pointer", fontFamily:mono, fontSize:9, padding:"1px 7px", flexShrink:0 }}>+</button>
+          <button onClick={query.createEmpty} title="New query" style={{ background:"#ffffff08", border:"1px dashed #ffffff2c", borderRadius:3, color:"#ffffff66", cursor:"pointer", fontFamily:mono, fontSize:10, fontWeight:700, padding:"2px 8px", flexShrink:0 }}>+</button>
         )}
       </div>
       <div style={{ padding:"9px 12px 10px" }}>
@@ -313,14 +313,22 @@ export function FloatingMeshQueryPanel({ query, left = 284, bottom = 16 }) {
           </div>
         )}
         {query.active.terms.length > 0 && (
-          <div style={{ fontFamily:mono, fontSize:7, color:"#ffffff18", marginTop:8, display:"flex", gap:10, alignItems:"center" }}>
-            <a href={pubMedUrl} target="_blank" rel="noreferrer" style={{ color:"#AED6F1", textDecoration:"none", border:"1px solid #AED6F144", borderRadius:3, padding:"3px 6px", fontWeight:700 }}>
-              PubMed
+          <>
+          <div style={{ marginTop:9, padding:"8px 9px", border:"1px solid #AED6F144", borderRadius:6, background:"linear-gradient(180deg,#AED6F118,#AED6F108)", display:"flex", alignItems:"center", gap:8 }}>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontFamily:mono, fontSize:7, color:"#AED6F1", letterSpacing:1.2, fontWeight:700 }}>RUN QUERY</div>
+              <div style={{ fontFamily:mono, fontSize:7.5, color:"#ffffff45", marginTop:2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>Open this MeSH filter in PubMed</div>
+            </div>
+            <a href={pubMedUrl} target="_blank" rel="noreferrer" style={{ color:"#091016", background:"#AED6F1", textDecoration:"none", border:"1px solid #D8ECFA", borderRadius:4, padding:"5px 9px", fontFamily:mono, fontSize:8.5, fontWeight:800, letterSpacing:0.4, boxShadow:"0 0 18px #AED6F122", flexShrink:0 }}>
+              PubMed ↗
             </a>
+          </div>
+          <div style={{ fontFamily:mono, fontSize:7, color:"#ffffff18", marginTop:7, display:"flex", gap:10, alignItems:"center" }}>
             <span>★ major topic</span>
             <span>☆ minor topic</span>
             <span style={{ marginLeft:"auto" }}>{query.active.terms.length} term{query.active.terms.length === 1 ? "" : "s"}</span>
           </div>
+          </>
         )}
       </div>
     </div>

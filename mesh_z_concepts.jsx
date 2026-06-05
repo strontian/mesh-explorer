@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { ComposableMap, Geographies, Geography, Graticule, Marker, Sphere } from "react-simple-maps";
 import worldAtlas from "world-atlas/countries-110m.json";
+import { MeshPageHeader } from "./mesh_page_header.jsx";
 
 const mono = "'IBM Plex Mono', monospace";
 const BG = "#0f1117";
@@ -721,14 +722,13 @@ function WorldMap({ data }) {
   return (
     <div style={{ height: "100%", overflow: "hidden", display: "grid", gridTemplateColumns: "minmax(520px, 1fr) 330px" }}>
       <div style={{ padding: "22px 28px", overflowY: "auto" }}>
-        <div style={{ fontFamily: mono, fontSize: 8, color: TREE_COLOR, letterSpacing: 2, marginBottom: 6 }}>
-          Z01 · GEOGRAPHIC LOCATIONS
-        </div>
-        <div style={{ fontFamily: mono, fontSize: 13, color: "#e8e8e8", fontWeight: 700, marginBottom: 6 }}>
-          World Map
-        </div>
-        <div style={{ fontFamily: mono, fontSize: 9, color: "#ffffff44", lineHeight: 1.7, marginBottom: 18 }}>
-          A schematic map for browsing geographic branches. Special buckets sit below the map.
+        <div style={{ margin: "-22px -28px 18px" }}>
+          <MeshPageHeader
+            letter="Z"
+            title="Geographic Locations"
+            description="Geographic branches cover continents, countries, regions, cities, oceans, seas, and historical locations."
+            color={TREE_COLOR}
+          />
         </div>
 
         <div style={{ position: "relative", background: "linear-gradient(180deg, #101822 0%, #0d1319 100%)", border: "1px solid #ffffff10", borderRadius: 8, overflow: "hidden" }}>

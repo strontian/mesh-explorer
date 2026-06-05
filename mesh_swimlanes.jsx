@@ -157,6 +157,7 @@ const mono = "'JetBrains Mono','Fira Mono',monospace";
 const BRANCH_COLOR = { age:"#6DB8E8", occ:"#E8A06D", persons:"#7DC48B" };
 
 const SCOPE_NOTES = {
+  "M": "Named Groups gathers terms for named human groups and populations, organized by age, occupation, health status, social role, and life circumstance.",
   "Infant, Newborn": "An infant during the first 28 days after birth.",
   "Infant, Premature": "A human infant born before 37 weeks of GESTATION.",
   "Infant": "A child between 1 and 23 months of age.",
@@ -201,6 +202,7 @@ const SCOPE_NOTES = {
 };
 
 const TREE_NUM = {
+  "M":"M",
   "Infant, Newborn":"M01.060.703.520", "Infant, Premature":"M01.060.703.535", "Infant":"M01.060.703",
   "Child, Preschool":"M01.060.406.500", "Child":"M01.060.406", "Birth Cohort":"M01.060.261",
   "Adolescent":"M01.060.057", "Young Adult":"M01.060.116.920", "Adult":"M01.060.116",
@@ -296,7 +298,7 @@ function AgeBar({ term, hovered, relatedHighlight, onHover, selected, onSelect, 
 }
 
 // ── OCC TREE LANE ──────────────────────────────────────────────────────────
-function OccNode({ node, depth, expanded, onToggle, hovered, onHover, selected, onSelect, collectedIds }) {
+function OccNode({ node, depth, path, expanded, onSelectNode, hovered, onHover, selected, collectedIds }) {
   const isExp = expanded.has(node.id);
   const isHov = hovered === node.id;
   const isSelected = selected?.id === node.id;
@@ -311,8 +313,7 @@ function OccNode({ node, depth, expanded, onToggle, hovered, onHover, selected, 
         onMouseEnter={() => onHover(node.id)}
         onMouseLeave={() => onHover(null)}
         onClick={() => {
-          onSelect({ id:node.id, branch:"occ" });
-          if (hasChildren) onToggle(node.id);
+          onSelectNode(node, path, hasChildren);
         }}
         style={{
           display:"flex", alignItems:"center", gap:6,
@@ -350,10 +351,10 @@ function OccNode({ node, depth, expanded, onToggle, hovered, onHover, selected, 
       {hasChildren && isExp && (
         <div style={{ borderLeft:`1px solid ${color}22`, marginLeft: 8 + indent + 6 }}>
           {node.children.map(child => (
-            <OccNode key={child.id} node={child} depth={depth+1}
-              expanded={expanded} onToggle={onToggle}
+            <OccNode key={child.id} node={child} depth={depth+1} path={[...path, node.id]}
+              expanded={expanded} onSelectNode={onSelectNode}
               hovered={hovered} onHover={onHover}
-              selected={selected} onSelect={onSelect} collectedIds={collectedIds}/>
+              selected={selected} collectedIds={collectedIds}/>
           ))}
         </div>
       )}
@@ -407,44 +408,85 @@ function PersonsLane({ hovered, onHover, relatedHighlight, selected, onSelect, c
 }
 
 // ── HEADER ─────────────────────────────────────────────────────────────────
-function Header() {
+function Header({ selected, onSelect }) {
+  const active = selected?.id === "M";
   return (
-    <div style={{
-      padding:"18px 24px 14px",
-      borderBottom:"1px solid #ffffff0e",
+    <button type="button" onClick={() => onSelect({ id:"M", branch:"persons" })} style={{
+      width:"100%",
+      padding:"18px 24px 16px",
+      border:"none",
+      borderBottom:`1px solid ${active ? "#AED6F155" : "#ffffff0e"}`,
       flexShrink:0,
-      display:"flex", gap:32, alignItems:"flex-start"
+      background:active ? "linear-gradient(180deg,#AED6F112,transparent)" : "linear-gradient(180deg,#ffffff05,transparent)",
+      textAlign:"left",
+      cursor:"pointer",
+      outline:"none",
     }}>
-      <div>
-        <div style={{ fontFamily:mono, fontSize:9, color:"#ffffff33", letterSpacing:3, marginBottom:4 }}>
-          MESH TREE · M01
+      <div style={{ display:"flex", alignItems:"center", gap:11 }}>
+        <div style={{
+          width:34,
+          height:34,
+          display:"grid",
+          placeItems:"center",
+          fontFamily:mono,
+          fontSize:16,
+          color:"#AED6F1",
+          letterSpacing:1,
+          fontWeight:700,
+          border:"1px solid #AED6F155",
+          background:"linear-gradient(180deg,#AED6F124,#AED6F10b)",
+          borderRadius:7,
+          lineHeight:1,
+          boxShadow:"0 0 22px #AED6F10d",
+          flexShrink:0,
+        }}>
+          M
         </div>
-        <div style={{ fontFamily:mono, fontSize:20, color:"#e8e8e8", fontWeight:700, letterSpacing:0.5 }}>
+        <div style={{ fontFamily:mono, fontSize:22, color:"#e8e8e8", fontWeight:700, letterSpacing:0.2 }}>
           Named Groups
         </div>
-        <div style={{ fontFamily:mono, fontSize:10, color:"#ffffff55", marginTop:5, lineHeight:1.7, maxWidth:420 }}>
-          Persons as individuals or members of a group — classified by age, occupation,
-          health status, social role, or life circumstance.
-          One of the most commonly applied secondary tag trees in clinical research.
-        </div>
       </div>
+      <div style={{
+        fontFamily:mono,
+        fontSize:10,
+        color:"#ffffff62",
+        marginTop:9,
+        lineHeight:1.65,
+        maxWidth:"72ch",
+        textWrap:"balance",
+      }}>
+        Terms for named human groups and populations, organized by age, occupation,
+        health status, social role, and life circumstance.
+      </div>
+    </button>
+  );
+}
 
-      {/* Stats */}
-      <div style={{ display:"flex", gap:20, marginLeft:"auto", flexShrink:0 }}>
-        {[
-          { label:"Total terms", value:"~400", color:"#ffffff" },
-          { label:"Max depth", value:"L6", color:"#ffffff" },
-          { label:"Age Groups", value:"12", color:"#6DB8E8" },
-          { label:"Occ. Groups", value:"26+", color:"#E8A06D" },
-          { label:"Persons (other)", value:"64", color:"#7DC48B" },
-        ].map(s => (
-          <div key={s.label} style={{ textAlign:"center" }}>
-            <div style={{ fontFamily:mono, fontSize:18, fontWeight:700, color:s.color }}>{s.value}</div>
-            <div style={{ fontFamily:mono, fontSize:8, color:"#ffffff33", marginTop:2 }}>{s.label}</div>
-          </div>
-        ))}
-      </div>
-    </div>
+function RootBar({ selected, onSelect, personNote }) {
+  const active = selected?.id === "Persons";
+  return (
+    <button type="button" onClick={() => onSelect({ id:"Persons", branch:"persons" })} style={{
+      flexShrink:0,
+      width:"100%",
+      padding:"8px 24px",
+      border:"none",
+      borderBottom:"1px solid #ffffff0e",
+      background:"linear-gradient(90deg,#AED6F10d,transparent 70%)",
+      display:"flex",
+      alignItems:"center",
+      gap:10,
+      fontFamily:mono,
+      textAlign:"left",
+      cursor:"pointer",
+      outline:"none",
+      boxShadow:active ? "inset 2px 0 0 #AED6F1" : "none",
+    }}>
+      <span style={{ fontSize:9, color:"#AED6F1" }}>M01</span>
+      <span style={{ fontSize:10, color:"#e8e8e8", fontWeight:700 }}>Persons</span>
+      <span style={{ fontSize:8, color:"#ffffff48", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+        {personNote}
+      </span>
+    </button>
   );
 }
 
@@ -468,29 +510,23 @@ function AgeAxis() {
           height:1, background:"#ffffff0a"
         }}/>
         {ticks.map(t => (
-          <div key={t}>
-            <div style={{
-              position:"absolute",
-              left:`${(t/MAX_AGE)*100}%`,
-              top:0,
-              fontFamily:mono, fontSize:7, color:"#ffffff33",
-              transform:"translateX(-50%)"
-            }}>{t}</div>
-            <div style={{
-              position:"absolute",
-              left:`${(t/MAX_AGE)*100}%`,
-              top:10, width:1, height:4,
-              background:"#ffffff1a"
-            }}/>
+          <div key={t} style={{
+            position:"absolute",
+            left:`${(t/MAX_AGE)*100}%`,
+            top:0,
+            transform:"translateX(-50%)",
+            fontFamily:mono,
+            fontSize:7,
+            color:"#ffffff22",
+          }}>
+            {t}
           </div>
         ))}
       </div>
-      {/* empty note cell */}
-      <div/>
+      <div style={{ fontFamily:mono, fontSize:7, color:"#ffffff22" }}>years</div>
     </div>
   );
 }
-
 // ── CROSS-LANE RELATION LOGIC ──────────────────────────────────────────────
 function getRelations(hoveredId, side) {
   // side: "age" = hovered something in age, highlight persons
@@ -538,8 +574,8 @@ export default function SwimLanes() {
   const [ageHovered, setAgeHovered]         = useState(null);
   const [occHovered, setOccHovered]         = useState(null);
   const [personsHovered, setPersonsHovered] = useState(null);
-  const [selected, setSelected]             = useState(null);
-  const [occExpanded, setOccExpanded]       = useState(new Set(["Health Personnel","Physicians","Frontline Workers"]));
+  const [selected, setSelected]             = useState({ id:"M", branch:"persons" });
+  const [occExpanded, setOccExpanded]       = useState(new Set());
   const query = usePersistentMeshQueries();
   const termByName = useMeshTermLookup();
   const selectedMeshTerm = selected ? termByName.get(selected.id) : null;
@@ -551,12 +587,9 @@ export default function SwimLanes() {
     ui:selectedMeshTerm?.ui,
   } : null;
 
-  const toggleOcc = useCallback((id) => {
-    setOccExpanded(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
+  const selectOccNode = useCallback((node, path, hasChildren) => {
+    setSelected({ id:node.id, branch:"occ" });
+    setOccExpanded(() => new Set(hasChildren ? [...path, node.id] : path));
   }, []);
 
   // Cross-lane highlights
@@ -579,7 +612,8 @@ export default function SwimLanes() {
         ::-webkit-scrollbar-thumb { background:#ffffff22; border-radius:2px; }
       `}</style>
 
-      <Header/>
+      <Header selected={selected} onSelect={setSelected}/>
+      <RootBar selected={selected} onSelect={setSelected} personNote={termByName.get("Persons")?.note || "Persons as individuals or as members of a group."}/>
 
       {/* Lane headers */}
       <div style={{
@@ -587,21 +621,28 @@ export default function SwimLanes() {
         borderBottom:"1px solid #ffffff0e", flexShrink:0
       }}>
         {[
-          { label:"Age Groups", sub:"Sequential · age-range bars", color:"#6DB8E8", count:12 },
-          { label:"Occupational Groups", sub:"Hierarchical · click to expand", color:"#E8A06D", count:"26 + subspecialties" },
-          { label:"Persons (other)", sub:"Softly clustered by theme", color:"#7DC48B", count:64 },
+          { label:"Age Groups", id:"Age Groups", branch:"age", color:"#6DB8E8", count:12 },
+          { label:"Occupational Groups", id:"Occupational Groups", branch:"occ", color:"#E8A06D", count:"26 + subspecialties" },
+          { label:"Persons (other)", id:"Persons", branch:"persons", color:"#7DC48B", count:64 },
         ].map((h,i) => (
-          <div key={h.label} style={{
+          <button key={h.label} type="button" onClick={() => setSelected({ id:h.id, branch:h.branch })} style={{
             padding:"10px 16px",
+            border:"none",
             borderLeft: i>0 ? "1px solid #ffffff0a" : "none",
-            borderTop:`2px solid ${h.color}`
+            borderRight:"none",
+            borderBottom:"none",
+            borderTop:`2px solid ${h.color}`,
+            background:selected?.id === h.id ? `${h.color}14` : "transparent",
+            fontFamily:mono,
+            textAlign:"left",
+            cursor:"pointer",
+            outline:"none",
           }}>
             <div style={{ fontSize:11, color:h.color, fontWeight:700 }}>{h.label}</div>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:2 }}>
-              <div style={{ fontSize:8, color:"#ffffff44" }}>{h.sub}</div>
               <div style={{ fontSize:8, color:h.color+"88" }}>{h.count} terms</div>
             </div>
-          </div>
+          </button>
         ))}
       </div>
 
@@ -657,12 +698,12 @@ export default function SwimLanes() {
                 key={node.id}
                 node={node}
                 depth={0}
+                path={[]}
                 expanded={occExpanded}
-                onToggle={toggleOcc}
+                onSelectNode={selectOccNode}
                 hovered={occHovered}
                 onHover={setOccHovered}
                 selected={selected}
-                onSelect={setSelected}
                 collectedIds={query.allIds}
               />
             ))}

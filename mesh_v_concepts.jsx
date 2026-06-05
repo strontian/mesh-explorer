@@ -1,4 +1,10 @@
 import { useState, useEffect } from "react";
+import {
+  FloatingMeshDetailPanel,
+  FloatingMeshQueryPanel,
+  usePersistentMeshQueries,
+} from "./mesh_query_ui.jsx";
+import { MeshPageHeader } from "./mesh_page_header.jsx";
 
 const mono = "'IBM Plex Mono', monospace";
 const BG = "#0f1117";
@@ -162,13 +168,12 @@ function OutlineBoard({ data }) {
 
   return (
     <div style={{ height: "100%", display: "grid", gridTemplateRows: "auto 1fr auto", overflow: "hidden" }}>
-      <div style={{ padding: "18px 24px 12px", borderBottom: "1px solid #ffffff0e" }}>
-        <div style={{ fontFamily: mono, fontSize: 9, color: TREE_COLOR, letterSpacing: 3, marginBottom: 4 }}>V · PUBLICATION CHARACTERISTICS</div>
-        <div style={{ fontFamily: mono, fontSize: 14, color: "#e8e8e8", fontWeight: 700 }}>Outline Board</div>
-        <div style={{ fontFamily: mono, fontSize: 9, color: "#ffffff44", marginTop: 3 }}>
-          Four shallow branches, shown as dense local hierarchies.
-        </div>
-      </div>
+      <MeshPageHeader
+        letter="V"
+        title="Publication Characteristics"
+        description="A shallow, broad tree for publication components, formats, study characteristics, and research support."
+        color={TREE_COLOR}
+      />
 
       <div style={{ overflow: "auto", padding: "14px 18px", display: "grid", gridTemplateColumns: "repeat(4, minmax(220px, 1fr))", gap: 10 }}>
         {branches.map(branch => {
@@ -230,6 +235,7 @@ function AllTermsV({ data }) {
   const [filter, setFilter] = useState("");
   const [hovered, setHovered] = useState(null);
   const [selected, setSelected] = useState(null);
+  const queryBuilder = usePersistentMeshQueries();
 
   const filtered = allTerms.filter(t =>
     !filter || t.term.name.toLowerCase().includes(filter.toLowerCase())
@@ -246,9 +252,18 @@ function AllTermsV({ data }) {
   const selectedItem = selected ? allTerms.find(t => t.treeNum === selected) : null;
   const hoveredItem = hovered ? allTerms.find(t => t.treeNum === hovered) : null;
   const detailItem = selectedItem || hoveredItem;
+  const detailColor = detailItem ? branchCfg(detailItem.treeNum).color : TREE_COLOR;
+  const selectedDetail = detailItem ? {
+    id: detailItem.term.name,
+    branch: "v",
+    color: detailColor,
+    treeNum: detailItem.treeNum,
+    ui: detailItem.term.ui,
+    note: detailItem.term.note || detailItem.term.scopeNote,
+  } : null;
 
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: 24, gap: 16, overflowY: "auto" }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: "24px 24px 230px", boxSizing: "border-box", gap: 16, overflowY: "auto" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <input
           value={filter}
@@ -315,6 +330,7 @@ function AllTermsV({ data }) {
               {items.map(({ term, treeNum, depth }) => {
                 const isHov = hovered === treeNum;
                 const isSelected = selected === treeNum;
+                const collected = queryBuilder.allIds.has(term.name);
                 return (
                   <button
                     key={treeNum}
@@ -323,12 +339,12 @@ function AllTermsV({ data }) {
                     onClick={() => setSelected(isSelected ? null : treeNum)}
                     style={{
                       padding: depth === 0 ? "4px 11px" : "2px 8px",
-                      background: isSelected ? cfg.color + "30" : isHov ? cfg.color + "28" : cfg.color + "10",
-                      border: `1px solid ${cfg.color}${isSelected ? "cc" : isHov ? "88" : "33"}`,
+                      background: isSelected ? cfg.color + "30" : isHov ? cfg.color + "28" : collected ? cfg.color + "1d" : cfg.color + "10",
+                      border: `1px solid ${isSelected ? cfg.color + "cc" : isHov ? cfg.color + "88" : collected ? cfg.color + "66" : cfg.color + "33"}`,
                       borderRadius: 16,
                       fontFamily: mono,
                       fontSize: depth === 0 ? 9.5 : 8.5,
-                      color: isSelected ? "#fff" : isHov ? cfg.color : cfg.color + "bb",
+                      color: isSelected ? "#fff" : isHov || collected ? cfg.color : cfg.color + "bb",
                       cursor: "pointer",
                       transition: "all 0.1s",
                       fontWeight: depth === 0 ? 600 : 400,
@@ -349,6 +365,8 @@ function AllTermsV({ data }) {
           no terms match "{filter}"
         </div>
       )}
+      <FloatingMeshDetailPanel selected={selectedDetail} query={queryBuilder} />
+      <FloatingMeshQueryPanel query={queryBuilder} />
     </div>
   );
 }
