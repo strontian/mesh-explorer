@@ -558,29 +558,8 @@ function PsychologyOverview({ data }) {
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <div style={{ padding: "16px 24px 12px", borderBottom: "1px solid #ffffff0a", flexShrink: 0 }}>
-        <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff33", letterSpacing: 2 }}>F · PSYCHOLOGY AND PSYCHIATRY</div>
-        <div style={{ fontFamily: mono, fontSize: 11, color: "#ffffffaa", marginTop: 2 }}>
-          Behavior, mental phenomena, disorders, and professional practice
-        </div>
-      </div>
-
-      <div style={{ flex: 1, display: "grid", gridTemplateColumns: "340px minmax(420px, 1fr)", overflow: "hidden" }}>
-        <aside style={{ borderRight: "1px solid #ffffff0a", padding: "20px 20px 230px", boxSizing: "border-box", overflowY: "auto" }}>
-          <div style={{ fontFamily: mono, fontSize: 8, color: selectedLayer.color, letterSpacing: 2, marginBottom: 6 }}>{selected}</div>
-          <div style={{ fontFamily: mono, fontSize: 13, color: "#ffffffdd", fontWeight: 600, lineHeight: 1.35 }}>{selectedTerm?.name}</div>
-          <div style={{ fontFamily: mono, fontSize: 8.5, color: "#ffffff55", lineHeight: 1.55, marginTop: 8 }}>{selectedLayer.phrase}</div>
-          {selectedTerm?.note && (
-            <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff55", lineHeight: 1.55, background: "#ffffff06", border: "1px solid #ffffff10", borderRadius: 6, padding: 10, marginTop: 12 }}>
-              {selectedTerm.note}
-            </div>
-          )}
-          <div style={{ fontFamily: mono, fontSize: 7.5, color: "#ffffff35", lineHeight: 1.6, marginTop: 14 }}>
-            Child terms are shown inline inside the active stack layer.
-          </div>
-        </aside>
-
-        <div style={{ padding: "22px 22px 230px", boxSizing: "border-box", overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ flex: 1, overflow: "hidden" }}>
+        <div style={{ height: "100%", padding: "22px 22px 230px", boxSizing: "border-box", overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
           {LAYERS.map((layer, idx) => {
             const branch = byId.get(layer.treeNum);
             const children = getChildren(layer.treeNum);
@@ -650,8 +629,8 @@ function PsychologyOverview({ data }) {
                 </div>
               </div>
             );
-          })}
-        </div>
+	          })}
+	      </div>
       </div>
       <FloatingMeshDetailPanel selected={selectedDetail} query={queryBuilder} />
       <FloatingMeshQueryPanel query={queryBuilder} />

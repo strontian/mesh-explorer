@@ -1,5 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { MeshPageHeader } from "./mesh_page_header.jsx";
+import {
+  FloatingMeshDetailPanel,
+  FloatingMeshQueryPanel,
+  usePersistentMeshQueries,
+} from "./mesh_query_ui.jsx";
 
 const mono = "'IBM Plex Mono', monospace";
 const BG = "#0f1117";
@@ -1120,12 +1125,13 @@ function PathLenses({ data }) {
 // SKETCH 6 — TREE SWITCHER
 // A true tree navigator for one placement, with jumps to sibling placements.
 // ═══════════════════════════════════════════════════════════════════════════
-function TreeSwitcher({ data }) {
+function TreeSwitcher({ data, selectorMode = "tree" }) {
   const { branches, childrenMap, allDTerms } = data;
   const defaultTerm = allDTerms.find(t => t.name === "Fibrinopeptide A") || allDTerms[0];
   const [currentPath, setCurrentPath] = useState(defaultTerm?.treeNums.find(n => n.startsWith("D")) || "D");
   const [selectedPath, setSelectedPath] = useState(defaultTerm?.treeNums.find(n => n.startsWith("D")) || "D");
   const [query, setQuery] = useState("");
+  const queryBuilder = usePersistentMeshQueries();
 
   const nodeByPath = new Map();
   for (const branch of branches) nodeByPath.set(branch.treeNum, branch.term);
@@ -1159,6 +1165,20 @@ function TreeSwitcher({ data }) {
   const currentLineage = lineage(currentPath);
   const selectedTerm = nodeByPath.get(selectedPath);
   const selectedColor = selectedPath === "D" ? TREE_COLOR : chemColor(selectedPath.slice(0, 3));
+  const selectedDetail = selectedTerm ? {
+    id: selectedTerm.name,
+    branch: "d",
+    color: selectedColor,
+    treeNum: selectedPath,
+    ui: selectedTerm.ui,
+    note: selectedTerm.note || selectedTerm.scopeNote,
+  } : {
+    id: "Chemicals and Drugs",
+    branch: "d",
+    color: TREE_COLOR,
+    treeNum: "D",
+    note: "Chemical descriptors can appear in multiple hierarchies by structure, biological role, pharmacologic use, or action.",
+  };
   const selectedParentPath = parentOf(selectedPath);
   const selectedChildren = (childrenMap.get(selectedPath) || []).sort((a, b) =>
     a.term.name.localeCompare(b.term.name)
@@ -1195,6 +1215,146 @@ function TreeSwitcher({ data }) {
     const maxDepth = Math.max(...chains.map(c => c.nodes.length), 1);
     const sinkName = currentTerm?.name || "selected descriptor";
     const isVertical = orientation === "vertical";
+    if (isVertical) {
+      const PATH_GAP = 58;
+      const LANE_GAP = 148;
+      const mergedNodes = new Map();
+      const edgeMap = new Map();
+
+      function nodeKey(node) {
+        if (node.treeNum === "D") return "D";
+        return nodeByPath.get(node.treeNum)?.ui || node.treeNum;
+      }
+
+      function registerNode(node, depth) {
+        const key = nodeKey(node);
+        const term = nodeByPath.get(node.treeNum);
+        if (!mergedNodes.has(key)) {
+          mergedNodes.set(key, {
+            key,
+            name: node.name,
+            treeNum: node.treeNum,
+            treeNums: new Set([node.treeNum]),
+            depth,
+            ui: term?.ui,
+          });
+        } else {
+          const record = mergedNodes.get(key);
+          record.treeNums.add(node.treeNum);
+          record.depth = Math.min(record.depth, depth);
+        }
+        return mergedNodes.get(key);
+      }
+
+      for (const chain of chains) {
+        let previous = null;
+        chain.nodes.forEach((node, index) => {
+          const record = registerNode(node, index);
+          if (previous) edgeMap.set(`${previous.key}->${record.key}`, { fromKey: previous.key, toKey: record.key });
+          previous = record;
+        });
+        if (previous) edgeMap.set(`${previous.key}->sink`, { fromKey: previous.key, toSink: true });
+      }
+
+      const nodesByDepth = new Map();
+      for (const node of mergedNodes.values()) {
+        if (!nodesByDepth.has(node.depth)) nodesByDepth.set(node.depth, []);
+        nodesByDepth.get(node.depth).push(node);
+      }
+      for (const nodes of nodesByDepth.values()) {
+        nodes.sort((a, b) => a.name.localeCompare(b.name));
+      }
+
+      const widestRow = Math.max(1, ...[...nodesByDepth.values()].map(nodes => nodes.length));
+      const svgWidth = LEFT * 2 + Math.max(720, widestRow * CHIP_W + (widestRow - 1) * (LANE_GAP - CHIP_W));
+      const centerX = Math.max(LEFT, (svgWidth - CHIP_W) / 2);
+      const maxPathDepth = Math.max(...chains.map(chain => chain.nodes.length), 1);
+      const sinkX = centerX;
+      const sinkY = TOP + maxPathDepth * PATH_GAP + SINK_GAP;
+      const svgHeight = sinkY + CHIP_H + TOP;
+
+      for (const [depth, nodes] of nodesByDepth.entries()) {
+        const rowStartX = Math.max(LEFT, centerX - ((nodes.length - 1) * LANE_GAP) / 2);
+        nodes.forEach((node, index) => {
+          node.x = rowStartX + index * LANE_GAP;
+          node.y = TOP + depth * PATH_GAP;
+        });
+      }
+
+      const drawableConnectors = [...edgeMap.values()]
+        .map(edge => ({
+          ...edge,
+          from: mergedNodes.get(edge.fromKey),
+          to: edge.toSink ? { x: sinkX, y: sinkY } : mergedNodes.get(edge.toKey),
+        }))
+        .filter(edge => edge.from && edge.to);
+
+      const visibleNodes = [...mergedNodes.values()].sort((a, b) =>
+        a.depth - b.depth || a.x - b.x || a.name.localeCompare(b.name)
+      );
+
+      return (
+        <div style={{ overflowX: "auto", overflowY: "hidden", paddingBottom: 6, maxHeight: 520 }}>
+          <svg width={svgWidth} height={svgHeight} style={{ display: "block", margin: "0 auto" }}>
+            <g>
+              {drawableConnectors.map(edge => {
+                const sx = edge.from.x + CHIP_W / 2;
+                const sy = edge.from.y + CHIP_H;
+                const tx = edge.to.x + CHIP_W / 2;
+                const ty = edge.to.y;
+                const elbow = sy + Math.max(16, (ty - sy) / 2);
+                return (
+                  <path
+                    key={edge.toSink ? `${edge.fromKey}->sink` : `${edge.fromKey}->${edge.toKey}`}
+                    d={`M ${sx} ${sy} V ${elbow} H ${tx} V ${ty}`}
+                    fill="none"
+                    stroke="#ffffff24"
+                    strokeWidth="1.2"
+                  />
+                );
+              })}
+            </g>
+            <g>
+              {visibleNodes.map(node => {
+                const primaryTreeNum = [...node.treeNums][0];
+                const active = node.treeNums.has(currentPath) || [...node.treeNums].some(treeNum => pathSet.has(treeNum));
+                const selected = node.treeNums.has(selectedPath);
+                const color = primaryTreeNum === "D" ? TREE_COLOR : chemColor(primaryTreeNum.slice(0, 3));
+                const canNavigate = node.treeNum !== "D";
+                return (
+                  <g key={node.key} transform={`translate(${node.x}, ${node.y})`} style={{ cursor: canNavigate ? "pointer" : "default" }} onClick={() => canNavigate && setSelectedPath(primaryTreeNum)}>
+                    <rect
+                      width={CHIP_W}
+                      height={CHIP_H}
+                      rx="4"
+                      fill={selected ? color + "36" : active ? color + "22" : "#151922"}
+                      stroke={selected ? color : active ? color + "aa" : color + "55"}
+                      strokeWidth={selected ? "1.4" : "1"}
+                    />
+                    <text x="8" y="11" fill={active ? "#ffffff" : "#ffffffc8"} fontFamily="IBM Plex Mono, monospace" fontSize="7.4">
+                      {node.name.length > 20 ? node.name.slice(0, 18) + "..." : node.name}
+                    </text>
+                    <text x="8" y="21" fill={color} fontFamily="IBM Plex Mono, monospace" fontSize="6.2">
+                      {node.treeNums.size > 1 ? `${node.treeNums.size} placements` : node.treeNum}
+                    </text>
+                  </g>
+                );
+              })}
+              <g transform={`translate(${sinkX}, ${sinkY})`} style={{ cursor: "pointer" }} onClick={() => setSelectedPath(currentPath)}>
+                <rect width={CHIP_W} height={CHIP_H} rx="4" fill={selectedPath === currentPath ? TREE_COLOR + "36" : TREE_COLOR + "24"} stroke={TREE_COLOR} strokeWidth={selectedPath === currentPath ? "1.4" : "1"} />
+                <text x="8" y="11" fill="#ffffff" fontFamily="IBM Plex Mono, monospace" fontSize="7.4">
+                  {sinkName.length > 20 ? sinkName.slice(0, 18) + "..." : sinkName}
+                </text>
+                <text x="8" y="21" fill={TREE_COLOR} fontFamily="IBM Plex Mono, monospace" fontSize="6.2">
+                  {paths.length} placements
+                </text>
+              </g>
+            </g>
+          </svg>
+        </div>
+      );
+    }
+
     const depthGap = isVertical ? 54 : CHIP_W + GAP_X;
     const laneGap = isVertical ? 148 : ROW_H;
     const sinkX = isVertical
@@ -1401,48 +1561,227 @@ function TreeSwitcher({ data }) {
     );
   }
 
+  function TagChildren({ parentTreeNum, color, depth = 0 }) {
+    const kids = (childrenMap.get(parentTreeNum) || []).sort((a, b) =>
+      a.term.name.localeCompare(b.term.name)
+    );
+    if (kids.length === 0) return null;
+    const openChild = kids.find(({ treeNum }) => pathSet.has(treeNum));
+
+    return (
+      <div style={{
+        display: "flex",
+        flexWrap: "wrap",
+        alignItems: "flex-start",
+        gap: 4,
+        marginTop: depth === 0 ? 8 : 4,
+        marginLeft: Math.min(depth * 10, 34),
+        paddingLeft: depth > 0 ? 10 : 0,
+        borderLeft: depth > 0 ? `1px solid ${color}28` : "none",
+      }}>
+        {kids.map(({ term, treeNum }) => {
+          const childCount = (childrenMap.get(treeNum) || []).length;
+          const active = treeNum === currentPath;
+          const onPath = pathSet.has(treeNum);
+          return (
+            <button
+              key={treeNum}
+              type="button"
+              title={treeNum}
+              onClick={() => navigateTo(treeNum)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                maxWidth: "100%",
+                minHeight: 22,
+                padding: "4px 8px",
+                background: active ? color + "30" : onPath ? color + "20" : color + "10",
+                border: `1px solid ${active || onPath ? color + "88" : color + "30"}`,
+                borderRadius: 999,
+                cursor: "pointer",
+                fontFamily: mono,
+                fontSize: 8,
+                color: active ? "#fff" : onPath ? "#ffffffd8" : "#ffffffb8",
+                lineHeight: 1.25,
+              }}
+            >
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{term.name}</span>
+              {childCount > 0 && <span style={{ color: color + "88", fontSize: 7 }}>{childCount}</span>}
+            </button>
+          );
+        })}
+        {openChild && (
+          <div style={{ flexBasis: "100%" }}>
+            <TagChildren parentTreeNum={openChild.treeNum} color={color} depth={depth + 1} />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function TagHierarchySelector() {
+    const activeRoot = currentPath === "D" ? null : currentPath.split(".")[0];
+    const groupedRoots = new Set(CHEM_GROUPS.flatMap(group => group.branches));
+    const otherRoots = (childrenMap.get("D") || [])
+      .filter(root => !groupedRoots.has(root.treeNum))
+      .map(root => root.treeNum);
+    const groups = otherRoots.length
+      ? [...CHEM_GROUPS, { id: "other", label: "Other", color: TREE_COLOR, branches: otherRoots }]
+      : CHEM_GROUPS;
+
+    return (
+      <div style={{ display: "grid", gap: 10 }}>
+        {groups.map(group => {
+          const roots = group.branches
+            .map(treeNum => ({ treeNum, term: nodeByPath.get(treeNum) }))
+            .filter(root => root.term);
+          const selectedInGroup = activeRoot && roots.some(root => root.treeNum === activeRoot);
+          const color = group.color;
+          return (
+            <section key={group.id} style={{
+              padding: 11,
+              background: color + "08",
+              border: `1px solid ${color}24`,
+              borderRadius: 8,
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginBottom: 8 }}>
+                <div style={{ fontFamily: mono, fontSize: 8, color, letterSpacing: 1.4, fontWeight: 700 }}>{group.label.toUpperCase()}</div>
+                <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff35" }}>{roots.length} branches</div>
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                {roots.map(root => {
+                  const childCount = (childrenMap.get(root.treeNum) || []).length;
+                  const active = currentPath === root.treeNum;
+                  const onPath = pathSet.has(root.treeNum);
+                  return (
+                    <button
+                      key={root.treeNum}
+                      type="button"
+                      onClick={() => navigateTo(root.treeNum)}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: "5px 8px",
+                        background: active ? color + "26" : onPath ? color + "1d" : color + "10",
+                        border: `1px solid ${active || onPath ? color + "88" : color + "32"}`,
+                        borderRadius: 999,
+                        cursor: "pointer",
+                        fontFamily: mono,
+                        fontSize: 8,
+                        color: active ? "#fff" : onPath ? "#ffffffd8" : "#ffffffb8",
+                        lineHeight: 1.25,
+                      }}
+                    >
+                      <span style={{ color }}>{root.treeNum}</span>
+                      <span>{root.term.name}</span>
+                      <span style={{ color: "#ffffff35", fontSize: 7 }}>{childCount}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedInGroup && (
+                <div style={{
+                  marginTop: 10,
+                  padding: 10,
+                  background: color + "09",
+                  border: `1px solid ${color}24`,
+                  borderRadius: 8,
+                }}>
+                  <TagChildren parentTreeNum={activeRoot} color={color} />
+                </div>
+              )}
+            </section>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
-    <div style={{ background: BG, height: "100%", overflow: "hidden", display: "grid", gridTemplateColumns: "330px minmax(430px, 1fr) 310px" }}>
-      <aside style={{ borderRight: "1px solid #ffffff0d", padding: "16px 14px 22px", overflowY: "auto" }}>
-        <div style={{ fontFamily: mono, fontSize: 11, color: TREE_COLOR, letterSpacing: 3, marginBottom: 5 }}>TREE SWITCHER</div>
+    <div style={{ background: BG, height: "100%", overflow: "hidden", display: "grid", gridTemplateColumns: selectorMode === "tags" ? "minmax(430px, 1fr) 430px" : "330px minmax(430px, 1fr)", gridTemplateRows: "auto minmax(0, 1fr)" }}>
+      <section style={{ gridColumn: "1 / -1", borderBottom: "1px solid #ffffff0d", padding: "12px 16px 10px", fontFamily: mono }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ flex: 1, display: "flex", alignItems: "center", background: "#ffffff0a", border: `1px solid ${q.length >= 2 ? TREE_COLOR + "77" : "#ffffff18"}`, borderRadius: 5, padding: "0 9px" }}>
+            <span style={{ fontSize: 10, color: "#ffffff33", marginRight: 7 }}>⌕</span>
+            <input
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="search D tree terms..."
+              style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", fontFamily: mono, fontSize: 10, color: "#fff", padding: "9px 0", caretColor: TREE_COLOR }}
+            />
+          </div>
+        </div>
+        {searchResults.length > 0 && (
+          <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingTop: 8, paddingBottom: 1 }}>
+            {searchResults.map(term => {
+              const paths = term.treeNums.filter(n => n.startsWith("D")).sort();
+              const firstPath = paths[0];
+              return (
+                <button
+                  key={term.ui}
+                  onClick={() => { if (firstPath) navigateTo(firstPath); setQuery(""); }}
+                  style={{ flex: "0 0 210px", textAlign: "left", padding: "7px 9px", background: "#ffffff06", border: "1px solid #ffffff0f", borderRadius: 5, cursor: "pointer", fontFamily: mono }}
+                >
+                  <div style={{ fontSize: 8.5, color: "#ffffffc8", lineHeight: 1.35, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{term.name}</div>
+                  <div style={{ fontSize: 7, color: "#ffffff33", marginTop: 4 }}>{paths.length} D placement{paths.length === 1 ? "" : "s"}</div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </section>
+      <aside style={{ gridColumn: selectorMode === "tags" ? 2 : 1, gridRow: 2, borderRight: selectorMode === "tags" ? "none" : "1px solid #ffffff0d", borderLeft: selectorMode === "tags" ? "1px solid #ffffff0d" : "none", padding: "16px 14px 22px", overflowY: "auto" }}>
+        <div style={{ fontFamily: mono, fontSize: 11, color: TREE_COLOR, letterSpacing: 3, marginBottom: 5 }}>
+          {selectorMode === "tags" ? "HIERARCHY TAG SELECTOR" : "TREE SWITCHER"}
+        </div>
         <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff38", lineHeight: 1.55, marginBottom: 13 }}>
-          Follow one acyclic tree placement. When a descriptor appears elsewhere, jump to that placement.
+          {selectorMode === "tags"
+            ? "Browse chemical branches as grouped tags. Selecting a tag opens its child level while the DAG shows all placements."
+            : "Follow one acyclic tree placement. When a descriptor appears elsewhere, jump to that placement."}
         </div>
 
-        <div style={{ display: "grid", gap: 3 }}>
-          {(childrenMap.get("D") || []).sort((a, b) => a.treeNum.localeCompare(b.treeNum, undefined, { numeric: true })).map(root => (
-            <TreeNode key={root.treeNum} item={root} depth={0} />
-          ))}
-        </div>
+        {selectorMode === "tags" ? (
+          <TagHierarchySelector />
+        ) : (
+          <div style={{ display: "grid", gap: 3 }}>
+            {(childrenMap.get("D") || []).sort((a, b) => a.treeNum.localeCompare(b.treeNum, undefined, { numeric: true })).map(root => (
+              <TreeNode key={root.treeNum} item={root} depth={0} />
+            ))}
+          </div>
+        )}
       </aside>
 
-      <main style={{ overflowY: "auto", padding: "18px 22px 24px" }}>
-        <section style={{ background: "#ffffff06", border: "1px solid #ffffff10", borderRadius: 7, padding: "14px 15px", marginBottom: 14, fontFamily: mono, height: 142, minHeight: 142, maxHeight: 142, boxSizing: "border-box", overflow: "hidden" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 14, alignItems: "start" }}>
-            <div>
-              <div style={{ fontSize: 7, color: "#ffffff25", letterSpacing: 2, marginBottom: 6 }}>SELECTED NODE</div>
-              <div style={{ fontSize: 15, color: "#fff", lineHeight: 1.3 }}>{selectedTerm?.name || "Chemicals and Drugs"}</div>
-              <div style={{ fontSize: 8, color: selectedColor, marginTop: 5 }}>{selectedPath}</div>
+      <main style={{ gridColumn: selectorMode === "tags" ? 1 : 2, gridRow: 2, overflowY: "auto", padding: "18px 22px 24px", paddingBottom: selectorMode === "tags" ? 230 : 24 }}>
+        {selectorMode !== "tags" && (
+          <section style={{ background: "#ffffff06", border: "1px solid #ffffff10", borderRadius: 7, padding: "14px 15px", marginBottom: 14, fontFamily: mono, height: 142, minHeight: 142, maxHeight: 142, boxSizing: "border-box", overflow: "hidden" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 14, alignItems: "start" }}>
+              <div>
+                <div style={{ fontSize: 7, color: "#ffffff25", letterSpacing: 2, marginBottom: 6 }}>SELECTED NODE</div>
+                <div style={{ fontSize: 15, color: "#fff", lineHeight: 1.3 }}>{selectedTerm?.name || "Chemicals and Drugs"}</div>
+                <div style={{ fontSize: 8, color: selectedColor, marginTop: 5 }}>{selectedPath}</div>
+              </div>
+              <div style={{ display: "flex", gap: 7, flexShrink: 0 }}>
+                {[
+                  ["children", selectedChildren.length],
+                  ["siblings", selectedSiblings.length],
+                  ["placements", selectedPlacements.length || 1],
+                ].map(([label, value]) => (
+                  <div key={label} style={{ minWidth: 68, padding: "7px 8px", background: "#00000022", border: "1px solid #ffffff0d", borderRadius: 5, textAlign: "center" }}>
+                    <div style={{ fontSize: 12, color: TREE_COLOR }}>{value}</div>
+                    <div style={{ fontSize: 7, color: "#ffffff33", marginTop: 2 }}>{label}</div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div style={{ display: "flex", gap: 7, flexShrink: 0 }}>
-              {[
-                ["children", selectedChildren.length],
-                ["siblings", selectedSiblings.length],
-                ["placements", selectedPlacements.length || 1],
-              ].map(([label, value]) => (
-                <div key={label} style={{ minWidth: 68, padding: "7px 8px", background: "#00000022", border: "1px solid #ffffff0d", borderRadius: 5, textAlign: "center" }}>
-                  <div style={{ fontSize: 12, color: TREE_COLOR }}>{value}</div>
-                  <div style={{ fontSize: 7, color: "#ffffff33", marginTop: 2 }}>{label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-          {selectedTerm?.note && (
-            <div style={{ fontSize: 8.2, color: "#ffffff62", lineHeight: 1.55, marginTop: 11, maxWidth: 760, maxHeight: 54, overflowY: "auto" }}>
-              {selectedTerm.note}
-            </div>
-          )}
-        </section>
+            {selectedTerm?.note && (
+              <div style={{ fontSize: 8.2, color: "#ffffff62", lineHeight: 1.55, marginTop: 11, maxWidth: 760, maxHeight: 54, overflowY: "auto" }}>
+                {selectedTerm.note}
+              </div>
+            )}
+          </section>
+        )}
 
         <section style={{ marginBottom: 14 }}>
           <div style={{ fontFamily: mono, fontSize: 7, color: "#ffffff25", letterSpacing: 2, marginBottom: 8 }}>PLACEMENT GRAPH · TOP TO BOTTOM</div>
@@ -1451,35 +1790,12 @@ function TreeSwitcher({ data }) {
           </div>
         </section>
       </main>
-
-      <aside style={{ borderLeft: "1px solid #ffffff0d", padding: "16px 14px 22px", overflowY: "auto", fontFamily: mono }}>
-        <div style={{ fontSize: 7, color: "#ffffff25", letterSpacing: 2, marginBottom: 8 }}>JUMP BY DESCRIPTOR</div>
-        <div style={{ display: "flex", alignItems: "center", background: "#ffffff0a", border: `1px solid ${q.length >= 2 ? TREE_COLOR + "77" : "#ffffff18"}`, borderRadius: 5, padding: "0 9px", marginBottom: 11 }}>
-          <span style={{ fontSize: 10, color: "#ffffff33", marginRight: 7 }}>⌕</span>
-          <input
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="search term..."
-            style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", fontFamily: mono, fontSize: 10, color: "#fff", padding: "9px 0", caretColor: TREE_COLOR }}
-          />
-        </div>
-        <div style={{ display: "grid", gap: 5 }}>
-          {searchResults.map(term => {
-            const paths = term.treeNums.filter(n => n.startsWith("D")).sort();
-            const firstPath = paths[0];
-            return (
-              <button
-                key={term.ui}
-                onClick={() => { if (firstPath) navigateTo(firstPath); setQuery(term.name); }}
-                style={{ textAlign: "left", padding: "8px 9px", background: "#ffffff06", border: "1px solid #ffffff0f", borderRadius: 5, cursor: "pointer", fontFamily: mono }}
-              >
-                <div style={{ fontSize: 8.5, color: "#ffffffc8", lineHeight: 1.35 }}>{term.name}</div>
-                <div style={{ fontSize: 7, color: "#ffffff33", marginTop: 4 }}>{paths.length} D placement{paths.length === 1 ? "" : "s"}</div>
-              </button>
-            );
-          })}
-        </div>
-      </aside>
+      {selectorMode === "tags" && (
+        <>
+          <FloatingMeshDetailPanel selected={selectedDetail} query={queryBuilder} />
+          <FloatingMeshQueryPanel query={queryBuilder} />
+        </>
+      )}
     </div>
   );
 }
@@ -1784,7 +2100,6 @@ function CategoryDagSwitcher({ data }) {
         </div>
 
         <section style={{ fontFamily: mono, marginBottom: 14 }}>
-          <div style={{ fontSize: 7, color: "#ffffff25", letterSpacing: 2, marginBottom: 8 }}>JUMP BY DESCRIPTOR</div>
           <div style={{ display: "flex", alignItems: "center", background: "#ffffff0a", border: `1px solid ${q.length >= 2 ? TREE_COLOR + "77" : "#ffffff18"}`, borderRadius: 5, padding: "0 9px", marginBottom: 8 }}>
             <span style={{ fontSize: 10, color: "#ffffff33", marginRight: 7 }}>⌕</span>
             <input
@@ -1802,7 +2117,7 @@ function CategoryDagSwitcher({ data }) {
                 return (
                   <button
                     key={term.ui}
-                    onClick={() => { if (firstPath) setCurrentPath(firstPath); setQuery(term.name); }}
+                    onClick={() => { if (firstPath) setCurrentPath(firstPath); setQuery(""); }}
                     style={{ textAlign: "left", padding: "8px 9px", background: "#ffffff06", border: "1px solid #ffffff0f", borderRadius: 5, cursor: "pointer", fontFamily: mono }}
                   >
                     <div style={{ fontSize: 8.5, color: "#ffffffc8", lineHeight: 1.35 }}>{term.name}</div>
@@ -1860,6 +2175,7 @@ export default function MeshDConcepts() {
   const [active, setActive] = useState("tree");
   const views = [
     { id: "tree", label: "Tree Switcher" },
+    { id: "tagDag", label: "Tag Selector DAG" },
     { id: "categoryDag", label: "Category DAG" },
   ];
 
@@ -1898,7 +2214,11 @@ export default function MeshDConcepts() {
       </nav>
 
       <div style={{ flex: 1, overflow: "hidden" }}>
-        {loading ? <Loading /> : active === "tree" ? <TreeSwitcher data={data} /> : <CategoryDagSwitcher data={data} />}
+        {loading ? <Loading /> : active === "tree"
+          ? <TreeSwitcher data={data} />
+          : active === "tagDag"
+            ? <TreeSwitcher data={data} selectorMode="tags" />
+            : <CategoryDagSwitcher data={data} />}
       </div>
     </div>
   );

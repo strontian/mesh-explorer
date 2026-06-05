@@ -320,7 +320,7 @@ function DisciplinesProgressiveMap({ data }) {
         }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 8 }}>
             <div style={{ fontFamily: mono, fontSize: 7, color: rootColor(selectedCluster) + "aa", letterSpacing: 1.5 }}>
-              EXPLORE {selectedCluster}
+              {selectedCluster}
             </div>
             <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff42" }}>
               {treeIndex.get(selectedCluster)?.term.name}
@@ -552,7 +552,7 @@ function DisciplinesOverviewMap({ data }) {
                     borderRadius: 8,
                   }}>
                     <div style={{ fontFamily: mono, fontSize: 7, color: color + "aa", letterSpacing: 1.5, marginBottom: 8 }}>
-                      EXPLORE {treeIndex.get(activeCluster)?.term.name}
+                      {treeIndex.get(activeCluster)?.term.name}
                     </div>
                     <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 4 }}>
                       {renderTags(activeCluster, color)}

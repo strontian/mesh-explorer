@@ -178,19 +178,12 @@ function AnatomyBodyMap({ data }) {
   function renderTopLevelOverview() {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ padding: 12, background: TREE_COLOR + "08", border: `1px solid ${TREE_COLOR}24`, borderRadius: 8 }}>
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 6 }}>
-          <div style={{ fontFamily: mono, fontSize: 7, color: TREE_COLOR + "aa", letterSpacing: 1.5 }}>TOP-LEVEL ANATOMY BRANCHES</div>
-          <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff35" }}>{branches.length} branches</div>
-          </div>
-          <div style={{ fontFamily: mono, fontSize: 8.5, color: "#ffffff55", lineHeight: 1.55 }}>
-            Select a branch to inspect its child terms. Spatial branches are also available on the body map.
-          </div>
-        </div>
-
         {ANATOMY_OVERVIEW_GROUPS.map(group => {
           const groupBranches = group.branches.map(treeNum => byTN.get(treeNum)).filter(Boolean);
           const total = groupBranches.reduce((sum, branch) => sum + branch.totalCount, 0);
+          const activeInGroup = selectedRoot && group.branches.includes(selectedRoot);
+          const activeBranch = activeInGroup ? byTN.get(selectedRoot) : null;
+          const activeColor = activeInGroup ? (A_BRANCH_COLORS[selectedRoot] || group.color) : group.color;
           return (
             <div key={group.id} style={{ padding: 12, background: group.color + "08", border: `1px solid ${group.color}24`, borderRadius: 8 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginBottom: 8 }}>
@@ -201,6 +194,7 @@ function AnatomyBodyMap({ data }) {
                 {groupBranches.map(branch => {
                   const color = A_BRANCH_COLORS[branch.treeNum] || group.color;
                   const collected = queryBuilder.allIds.has(branch.term.name);
+                  const active = selectedRoot === branch.treeNum;
                   return (
                     <button
                       key={branch.treeNum}
@@ -211,13 +205,13 @@ function AnatomyBodyMap({ data }) {
                         alignItems: "center",
                         gap: 6,
                         padding: "5px 8px",
-                        background: collected ? color + "1d" : color + "10",
-                        border: `1px solid ${collected ? color + "66" : color + "32"}`,
+                        background: active ? color + "24" : collected ? color + "1d" : color + "10",
+                        border: `1px solid ${active ? color + "90" : collected ? color + "66" : color + "32"}`,
                         borderRadius: 999,
                         cursor: "pointer",
                         fontFamily: mono,
                         fontSize: 8,
-                        color: collected ? color : "#ffffffb8",
+                        color: active ? "#fff" : collected ? color : "#ffffffb8",
                         lineHeight: 1.25,
                       }}
                     >
@@ -228,6 +222,23 @@ function AnatomyBodyMap({ data }) {
                   );
                 })}
               </div>
+              {activeInGroup && (
+                <div style={{
+                  marginTop: 10,
+                  padding: 10,
+                  background: activeColor + "09",
+                  border: `1px solid ${activeColor + "24"}`,
+                  borderRadius: 8,
+                }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 8 }}>
+                    <div style={{ fontFamily: mono, fontSize: 7, color: activeColor + "aa", letterSpacing: 1.5 }}>{selectedRoot}</div>
+                    <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff42" }}>{activeBranch?.term.name}</div>
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 4 }}>
+                    {renderTags(selectedRoot, activeColor)}
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
@@ -241,6 +252,7 @@ function AnatomyBodyMap({ data }) {
                 .map(branch => {
                   const color = A_BRANCH_COLORS[branch.treeNum] || TREE_COLOR;
                   const collected = queryBuilder.allIds.has(branch.term.name);
+                  const active = selectedRoot === branch.treeNum;
             return (
               <button
                 key={branch.treeNum}
@@ -251,13 +263,13 @@ function AnatomyBodyMap({ data }) {
                   alignItems: "center",
                   gap: 6,
                   padding: "5px 8px",
-                  background: collected ? color + "1d" : color + "10",
-                  border: `1px solid ${collected ? color + "66" : color + "32"}`,
+                  background: active ? color + "24" : collected ? color + "1d" : color + "10",
+                  border: `1px solid ${active ? color + "90" : collected ? color + "66" : color + "32"}`,
                   borderRadius: 999,
                   cursor: "pointer",
                   fontFamily: mono,
                   fontSize: 8,
-                  color: collected ? color : "#ffffffb8",
+                  color: active ? "#fff" : collected ? color : "#ffffffb8",
                   lineHeight: 1.25,
                 }}
               >
@@ -268,6 +280,19 @@ function AnatomyBodyMap({ data }) {
             );
                 })}
             </div>
+            {selectedRoot && !ANATOMY_OVERVIEW_GROUPS.some(group => group.branches.includes(selectedRoot)) && (
+              <div style={{
+                marginTop: 10,
+                padding: 10,
+                background: (A_BRANCH_COLORS[selectedRoot] || TREE_COLOR) + "09",
+                border: `1px solid ${(A_BRANCH_COLORS[selectedRoot] || TREE_COLOR) + "24"}`,
+                borderRadius: 8,
+              }}>
+                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 4 }}>
+                  {renderTags(selectedRoot, A_BRANCH_COLORS[selectedRoot] || TREE_COLOR)}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -286,7 +311,13 @@ function AnatomyBodyMap({ data }) {
     treeNum: activeTreeNum,
     ui: activeEntry.term.ui,
     note: activeEntry.term.note || activeEntry.term.scopeNote,
-  } : null;
+  } : {
+    id: "Anatomy",
+    branch: "a",
+    color: TREE_COLOR,
+    treeNum: "A",
+    note: "Body structures and systems, with spatial branches supported by a body-map selector and non-spatial anatomy grouped nearby.",
+  };
   const zoneFill = (treeNum) => selectedRoot === treeNum || hovered === treeNum ? (A_BRANCH_COLORS[treeNum] || TREE_COLOR) + "2e" : "#ffffff0a";
   const zoneStroke = (treeNum) => selectedRoot === treeNum ? (A_BRANCH_COLORS[treeNum] || TREE_COLOR) : hovered === treeNum ? (A_BRANCH_COLORS[treeNum] || TREE_COLOR) + "99" : "#ffffff1a";
   const zoneWidth = (treeNum) => selectedRoot === treeNum ? 2 : 1;
@@ -304,8 +335,17 @@ function AnatomyBodyMap({ data }) {
   ];
 
   return (
-    <div style={{ height: "100%", overflowY: "auto", display: "grid", gridTemplateColumns: "minmax(360px, 0.9fr) minmax(440px, 1.1fr)", alignItems: "start", background: BG, paddingBottom: 230, boxSizing: "border-box" }}>
-      <section style={{ borderRight: "1px solid #ffffff0d", padding: "18px 22px" }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden", background: BG }}>
+      <MeshPageHeader
+        letter="A"
+        title="Anatomy"
+        description="Body structures and systems, with spatial branches supported by a body-map selector and non-spatial anatomy grouped nearby."
+        color={TREE_COLOR}
+        onClick={() => selectRoot(null)}
+        active={!selectedRoot && !selectedTag}
+      />
+      <div style={{ flex: 1, overflowY: "auto", display: "grid", gridTemplateColumns: "minmax(360px, 0.9fr) minmax(440px, 1.1fr)", alignItems: "start", paddingBottom: 230, boxSizing: "border-box" }}>
+        <section style={{ borderRight: "1px solid #ffffff0d", padding: "18px 22px" }}>
         <div style={{ fontFamily: mono, fontSize: 11, color: TREE_COLOR, letterSpacing: 3, marginBottom: 5 }}>BODY MAP</div>
         <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff38", lineHeight: 1.55, marginBottom: 14 }}>
           Spatial anatomy branches are placed on the figure. Non-spatial branches remain as tags below.
@@ -373,47 +413,12 @@ function AnatomyBodyMap({ data }) {
             );
           })}
         </div>
-      </section>
+        </section>
 
-      <section style={{ padding: "18px 22px" }}>
-        <div style={{ height: 158, minHeight: 158, maxHeight: 158, overflow: "hidden", boxSizing: "border-box", padding: 14, background: "#ffffff06", border: `1px solid ${activeColor}36`, borderRadius: 8, marginBottom: 14, fontFamily: mono }}>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 14, alignItems: "start" }}>
-            <div>
-              <div style={{ fontSize: 7, color: activeColor + "aa", letterSpacing: 1.5, marginBottom: 5 }}>{activeEntry ? "SELECTED ANATOMY TERM" : "ANATOMY OVERVIEW"}</div>
-              <div style={{ fontSize: 15, color: "#fff", lineHeight: 1.3, fontWeight: 700 }}>{activeEntry?.term.name || "Top-Level Anatomy Branches"}</div>
-              <div style={{ fontSize: 8, color: activeColor, marginTop: 5 }}>{activeTreeNum || "A"}</div>
-            </div>
-            <div style={{ display: "flex", gap: 7, flexShrink: 0 }}>
-              {[
-                ["children", activeTreeNum ? activeChildren.length : branches.length],
-                ["narrower", activeTreeNum ? countDescendants(activeTreeNum) : branches.reduce((sum, branch) => sum + branch.totalCount, 0)],
-              ].map(([label, value]) => (
-                <div key={label} style={{ minWidth: 68, padding: "7px 8px", background: "#00000022", border: "1px solid #ffffff0d", borderRadius: 5, textAlign: "center" }}>
-                  <div style={{ fontSize: 12, color: activeColor }}>{value}</div>
-                  <div style={{ fontSize: 7, color: "#ffffff33", marginTop: 2 }}>{label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-          {(activeEntry?.term.note || activeEntry?.term.scopeNote) && (
-            <div style={{ fontSize: 8.4, color: "#ffffff65", lineHeight: 1.55, marginTop: 10, maxHeight: 55, overflowY: "auto" }}>
-              {activeEntry.term.note || activeEntry.term.scopeNote}
-            </div>
-          )}
-        </div>
-
-        {selectedRoot ? (
-          <div style={{ padding: 12, background: activeColor + "08", border: `1px solid ${activeColor}24`, borderRadius: 8 }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 9 }}>
-              <div style={{ fontFamily: mono, fontSize: 7, color: activeColor + "aa", letterSpacing: 1.5 }}>EXPLORE {selectedRoot}</div>
-              <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff42" }}>{activeBranch?.term.name}</div>
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 4 }}>
-              {renderTags(selectedRoot, activeColor)}
-            </div>
-          </div>
-        ) : renderTopLevelOverview()}
-      </section>
+        <section style={{ padding: "18px 22px" }}>
+          {renderTopLevelOverview()}
+        </section>
+      </div>
       <FloatingMeshDetailPanel selected={selectedDetail} query={queryBuilder} />
       <FloatingMeshQueryPanel query={queryBuilder} />
     </div>
@@ -426,12 +431,6 @@ export default function MeshAConcepts() {
   return (
     <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: BG }}>
       <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
-      <MeshPageHeader
-        letter="A"
-        title="Anatomy"
-        description="Body structures and systems, with spatial branches supported by a body-map selector and non-spatial anatomy grouped nearby."
-        color={TREE_COLOR}
-      />
       <div style={{ flex: 1, overflow: "hidden" }}>
         {loading ? <LoadingMesh /> : <AnatomyBodyMap data={data} />}
       </div>

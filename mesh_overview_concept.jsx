@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   FloatingMeshDetailPanel,
   FloatingMeshQueryPanel,
+  MeshInspectorQueryDock,
   usePersistentMeshQueries,
 } from "./mesh_query_ui.jsx";
 import { MeshPageHeader } from "./mesh_page_header.jsx";
@@ -86,6 +87,7 @@ export function OverviewDetailExplorer({
   pageDescription,
   treeColor,
   defaultCluster,
+  inspectorLayout = "floating",
 }) {
   const { branches, childrenMap, countDescendants } = data;
   const queryBuilder = usePersistentMeshQueries();
@@ -102,8 +104,8 @@ export function OverviewDetailExplorer({
   const [expandedNodes, setExpandedNodes] = useState([]);
 
   useEffect(() => {
-    if (!selectedLayer && firstCluster) setSelectedLayer(defaultCluster || firstCluster);
-  }, [defaultCluster, firstCluster, selectedLayer]);
+    if (!selectedLayer && !selectedTag && firstCluster) setSelectedLayer(defaultCluster || firstCluster);
+  }, [defaultCluster, firstCluster, selectedLayer, selectedTag]);
 
   const treeIndex = new Map();
   for (const branch of branches) treeIndex.set(branch.treeNum, { term: branch.term, treeNum: branch.treeNum });
@@ -150,6 +152,18 @@ export function OverviewDetailExplorer({
     setExpandedNodes(getChildren(treeNum).length > 0 ? [treeNum] : []);
   }
 
+  function selectRoot() {
+    setSelectedLayer(null);
+    setSelectedTag(treeLetter);
+    setExpandedNodes([]);
+  }
+
+  function selectBranch(treeNum) {
+    setSelectedLayer(treeNum);
+    setSelectedTag(treeNum);
+    setExpandedNodes([]);
+  }
+
   function selectTag(treeNum) {
     setSelectedTag(treeNum);
     if (getChildren(treeNum).length > 0) toggleExpanded(treeNum);
@@ -158,7 +172,13 @@ export function OverviewDetailExplorer({
   const activeTreeNum = selectedTag || selectedLayer || branches[0]?.treeNum;
   const activeEntry = activeTreeNum ? treeIndex.get(activeTreeNum) : null;
   const activeColor = activeTreeNum ? rootColor(activeTreeNum) : treeColor;
-  const selectedDetail = activeEntry ? {
+  const selectedDetail = activeTreeNum === treeLetter ? {
+    id:treeTitleFromNavLabel(navLabel),
+    branch:treeLetter.toLowerCase(),
+    color:treeColor,
+    treeNum:treeLetter,
+    note:pageDescription || sentenceFromEyebrow(eyebrow),
+  } : activeEntry ? {
     id:activeEntry.term.name,
     branch:treeLetter.toLowerCase(),
     color:activeColor,
@@ -270,29 +290,39 @@ export function OverviewDetailExplorer({
     );
   }
 
+  const dockedInspector = inspectorLayout === "rightDock";
+
   return (
-    <div style={{ height: "100%", overflowY: "auto", padding: 24, paddingTop: 0, paddingBottom: 230 }}>
+    <div style={{ height: "100%", overflowY: "auto", padding: 24, paddingTop: 0, paddingBottom: dockedInspector ? 24 : 230 }}>
       <div style={{ margin: "0 -24px 20px" }}>
         <MeshPageHeader
           letter={treeLetter}
           title={treeTitleFromNavLabel(navLabel)}
           description={pageDescription || sentenceFromEyebrow(eyebrow)}
           color={treeColor}
+          onClick={selectRoot}
+          active={selectedTag === treeLetter}
         />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(420px, 1fr)", gap: 16, alignItems: "start" }}>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: dockedInspector ? "minmax(420px, 1fr) 340px" : "minmax(420px, 1fr)",
+        gap: dockedInspector ? 18 : 16,
+        alignItems: "start",
+      }}>
         <main style={{ display: "grid", gap: 14 }}>
           {branches.map(branch => {
             const color = branch.color;
             const clusters = getChildren(branch.treeNum);
             const activeCluster = selectedLayer?.startsWith(branch.treeNum + ".") ? selectedLayer : selectedLayer === branch.treeNum ? branch.treeNum : null;
             return (
-              <section key={branch.treeNum} style={{
+              <section key={branch.treeNum} onClick={() => selectBranch(branch.treeNum)} style={{
                 padding: 14,
                 background: activeCluster ? color + "12" : "#ffffff05",
                 border: `1px solid ${activeCluster ? color + "70" : "#ffffff12"}`,
                 borderRadius: 8,
+                cursor: "pointer",
               }}>
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
                   <div>
@@ -312,7 +342,10 @@ export function OverviewDetailExplorer({
                       <button
                         key={treeNum}
                         type="button"
-                        onClick={() => selectLayer(treeNum)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          selectLayer(treeNum);
+                        }}
                         style={{
                           display: "inline-flex",
                           alignItems: "center",
@@ -346,7 +379,7 @@ export function OverviewDetailExplorer({
                     borderRadius: 8,
                   }}>
                     <div style={{ fontFamily: mono, fontSize: 7, color: color + "aa", letterSpacing: 1.5, marginBottom: 8 }}>
-                      EXPLORE {treeIndex.get(activeCluster)?.term.name}
+                      {treeIndex.get(activeCluster)?.term.name}
                     </div>
                     <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 4 }}>
                       {renderTags(activeCluster, color)}
@@ -357,10 +390,17 @@ export function OverviewDetailExplorer({
             );
           })}
         </main>
+        {dockedInspector && (
+          <MeshInspectorQueryDock selected={selectedDetail} query={queryBuilder} />
+        )}
       </div>
 
-      <FloatingMeshDetailPanel selected={selectedDetail} query={queryBuilder} />
-      <FloatingMeshQueryPanel query={queryBuilder} />
+      {!dockedInspector && (
+        <>
+          <FloatingMeshDetailPanel selected={selectedDetail} query={queryBuilder} />
+          <FloatingMeshQueryPanel query={queryBuilder} />
+        </>
+      )}
     </div>
   );
 }
@@ -374,6 +414,7 @@ export function OverviewConceptShell({
   treeColor,
   branchColors,
   defaultCluster,
+  inspectorLayout,
 }) {
   const { data, loading } = useMeshTreeData(treeLetter, branchColors, treeColor);
 
@@ -392,6 +433,7 @@ export function OverviewConceptShell({
             pageDescription={pageDescription}
             treeColor={treeColor}
             defaultCluster={defaultCluster}
+            inspectorLayout={inspectorLayout}
           />
         )}
       </div>

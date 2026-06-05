@@ -335,6 +335,170 @@ export function FloatingMeshQueryPanel({ query, left = 284, bottom = 16 }) {
   );
 }
 
+export function MeshInspectorQueryDock({ selected, query }) {
+  const [editing, setEditing] = useState(false);
+  const [open, setOpen] = useState(false);
+  const inputRef = useRef(null);
+  const menuRef = useRef(null);
+  const color = selected?.color || DEFAULT_BRANCH_COLOR[selected?.branch] || "#ffffff";
+  const alreadyIn = selected && query.inActive.has(selected.id);
+  const pubMedUrl = query.active ? buildPubMedUrl(query.active.terms) : null;
+
+  useEffect(() => {
+    if (editing && inputRef.current) inputRef.current.focus();
+  }, [editing]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = event => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <aside style={{
+      position:"sticky",
+      top:18,
+      alignSelf:"start",
+      maxHeight:"calc(100vh - 170px)",
+      overflowY:"auto",
+      background:"#13161d",
+      border:"1px solid #ffffff18",
+      borderRadius:10,
+      boxShadow:"0 12px 34px rgba(0,0,0,0.34),0 0 0 1px #ffffff05",
+      fontFamily:mono,
+    }}>
+      <div style={{ height:3, background:`linear-gradient(90deg,${color}cc,${color}22,#ffffff0a)` }} />
+
+      <section style={{ padding:"14px 15px 13px", borderBottom:"1px solid #ffffff0d", minHeight:248, boxSizing:"border-box", display:"flex", flexDirection:"column" }}>
+        <div style={{ fontSize:7.5, color:color + "aa", letterSpacing:1.6, fontWeight:700, marginBottom:8 }}>
+          SELECTED TERM
+        </div>
+        {selected ? (
+          <>
+            <div style={{ fontSize:16, color:"#f1f3f4", fontWeight:800, lineHeight:1.22, marginBottom:4, minHeight:39, display:"flex", alignItems:"flex-start" }}>
+              {selected.id}
+            </div>
+            <div style={{ fontSize:8, color:color, marginBottom:10 }}>
+              {selected.treeNum || selected.ui || "MeSH"}
+            </div>
+            <div style={{ fontSize:9, color:"#ffffff9c", lineHeight:1.65, height:98, overflowY:"auto", paddingRight:4, marginBottom:12 }}>
+              {selected.note || <span style={{ color:"#ffffff2a", fontStyle:"italic" }}>No scope note on record.</span>}
+            </div>
+            {!query.active ? (
+              <button onClick={() => query.create(selected)} style={{ width:"100%", padding:"8px 10px", fontFamily:mono, fontSize:8.5, fontWeight:800, background:"#ffffff10", border:"1px solid #ffffff28", borderRadius:5, color:"#e8e8e8", cursor:"pointer", letterSpacing:0.5 }}>
+                + create query with this term
+              </button>
+            ) : alreadyIn ? (
+              <div style={{ padding:"7px 10px", border:"1px solid #ffffff12", borderRadius:5, color:"#ffffff34", fontSize:8.5, textAlign:"center" }}>
+                already in active query
+              </div>
+            ) : (
+              <button onClick={() => query.add(selected)} style={{ width:"100%", padding:"8px 10px", fontFamily:mono, fontSize:8.5, fontWeight:800, background:`${color}18`, border:`1px solid ${color}55`, borderRadius:5, color, cursor:"pointer", letterSpacing:0.5 }}>
+                + add to query
+              </button>
+            )}
+          </>
+        ) : (
+          <div style={{ padding:"18px 0", fontSize:9, color:"#ffffff25", textAlign:"center", lineHeight:1.8 }}>
+            select a term to inspect it
+          </div>
+        )}
+      </section>
+
+      <section style={{ padding:"13px 15px 15px" }}>
+        {!query.active ? (
+          <button onClick={query.createEmpty} style={{ width:"100%", padding:"8px 10px", fontFamily:mono, fontSize:8.5, fontWeight:800, background:"#ffffff0c", border:"1px dashed #ffffff30", borderRadius:5, color:"#ffffff86", cursor:"pointer" }}>
+            + new query
+          </button>
+        ) : (
+          <>
+            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10, position:"relative" }}>
+              {query.queries.length > 1 && !editing && (
+                <div ref={menuRef} style={{ position:"relative", flexShrink:0 }}>
+                  <button onClick={() => setOpen(v => !v)} style={{ background:"#ffffff08", border:"1px solid #ffffff16", borderRadius:4, color:open ? "#fff" : "#ffffff55", cursor:"pointer", padding:"3px 6px", fontFamily:mono, fontSize:9 }}>
+                    {open ? "▴" : "▾"}
+                  </button>
+                  {open && (
+                    <div style={{ position:"absolute", top:"calc(100% + 6px)", left:0, background:"#1a1e28", border:"1px solid #ffffff22", borderRadius:6, overflow:"hidden", boxShadow:"0 8px 24px rgba(0,0,0,0.5)", minWidth:190, zIndex:20 }}>
+                      {query.queries.map(q => (
+                        <div key={q.id} onClick={() => { query.setActiveId(q.id); setOpen(false); }} style={{ padding:"8px 12px", fontSize:9, color:q.id === query.activeId ? "#e8e8e8" : "#888", background:q.id === query.activeId ? "#ffffff0e" : "transparent", cursor:"pointer", display:"flex", alignItems:"center", gap:8, borderBottom:"1px solid #ffffff06" }}>
+                          <span style={{ width:4, height:4, borderRadius:"50%", background:q.id === query.activeId ? "#AED6F1" : "transparent", border:q.id === query.activeId ? "none" : "1px solid #ffffff28", flexShrink:0 }} />
+                          <span style={{ flex:1 }}>{q.name}</span>
+                          <span style={{ fontSize:8, color:"#ffffff28" }}>{q.terms.length}</span>
+                        </div>
+                      ))}
+                      <div onClick={() => { query.createEmpty(); setOpen(false); }} style={{ padding:"8px 12px", fontSize:9, color:"#ffffff55", cursor:"pointer", borderTop:"1px solid #ffffff0a" }}>
+                        + new query
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              {editing ? (
+                <input ref={inputRef} defaultValue={query.active.name} onBlur={event => { query.rename(event.target.value.trim() || query.active.name); setEditing(false); }} onKeyDown={event => {
+                  if (event.key === "Enter") { query.rename(event.currentTarget.value.trim() || query.active.name); setEditing(false); }
+                  if (event.key === "Escape") setEditing(false);
+                }} style={{ flex:1, minWidth:0, fontFamily:mono, fontSize:12, fontWeight:800, background:"transparent", border:"none", borderBottom:"1px solid #ffffff44", color:"#e8e8e8", outline:"none", padding:"2px 0" }} />
+              ) : (
+                <button onClick={query.queries.length > 1 ? () => setOpen(v => !v) : undefined} style={{ flex:1, minWidth:0, textAlign:"left", background:"transparent", border:"none", padding:0, fontFamily:mono, fontSize:12, color:"#e8e8e8", fontWeight:800, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", cursor:query.queries.length > 1 ? "pointer" : "default" }}>
+                  {query.active.name}
+                </button>
+              )}
+              {!editing && (
+                <button onClick={() => setEditing(true)} title="Rename query" style={{ background:"transparent", border:"none", color:"#ffffff35", cursor:"pointer", fontSize:11, padding:2 }}>✎</button>
+              )}
+              <button onClick={query.createEmpty} title="New query" style={{ background:"#ffffff08", border:"1px dashed #ffffff32", borderRadius:4, color:"#ffffff74", cursor:"pointer", fontFamily:mono, fontSize:10, fontWeight:800, padding:"3px 8px" }}>+</button>
+            </div>
+
+            {query.active.terms.length === 0 ? (
+              <div style={{ fontSize:8.5, color:"#ffffff24", lineHeight:1.7, padding:"7px 0 4px" }}>
+                no terms yet - select a term and add it above
+              </div>
+            ) : (
+              <div style={{ display:"flex", flexWrap:"wrap", gap:5, maxHeight:138, overflowY:"auto", paddingRight:2 }}>
+                {query.active.terms.map(term => {
+                  const termColor = term.color || DEFAULT_BRANCH_COLOR[term.branch] || "#aaa";
+                  return (
+                    <div key={term.id} style={{ display:"flex", alignItems:"center", background:"#ffffff0b", border:"1px solid #ffffff18", borderRadius:5, overflow:"hidden", outline:term.major ? "1px solid #FFD70044" : "none" }}>
+                      <button onClick={() => query.toggleMajor(term.id)} title={term.major ? "major topic" : "minor topic"} style={{ padding:"4px 6px", background:"transparent", border:"none", color:term.major ? "#FFD700" : "#ffffff30", cursor:"pointer", fontSize:10, lineHeight:1, flexShrink:0 }}>
+                        {term.major ? "★" : "☆"}
+                      </button>
+                      <span style={{ fontSize:8.5, color:term.major ? "#FFD700cc" : termColor + "dd", paddingRight:2, fontWeight:term.major ? 700 : 500 }}>{term.id}</span>
+                      <button onClick={() => query.remove(term.id)} style={{ padding:"4px 6px", background:"transparent", border:"none", borderLeft:"1px solid #ffffff0e", color:"#ffffff30", cursor:"pointer", fontSize:11, lineHeight:1, flexShrink:0 }}>x</button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {query.active.terms.length > 0 && (
+              <>
+                <div style={{ marginTop:11, padding:"10px 10px", border:"1px solid #AED6F144", borderRadius:7, background:"linear-gradient(180deg,#AED6F118,#AED6F108)", display:"flex", alignItems:"center", gap:9 }}>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:7, color:"#AED6F1", letterSpacing:1.3, fontWeight:800 }}>RUN QUERY</div>
+                    <div style={{ fontSize:7.5, color:"#ffffff48", marginTop:3, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>Open this MeSH filter in PubMed</div>
+                  </div>
+                  <a href={pubMedUrl} target="_blank" rel="noreferrer" style={{ color:"#091016", background:"#AED6F1", textDecoration:"none", border:"1px solid #D8ECFA", borderRadius:5, padding:"6px 10px", fontSize:8.5, fontWeight:900, letterSpacing:0.4, boxShadow:"0 0 18px #AED6F122", flexShrink:0 }}>
+                    PubMed ↗
+                  </a>
+                </div>
+                <div style={{ fontSize:7, color:"#ffffff20", marginTop:8, display:"flex", gap:10, alignItems:"center" }}>
+                  <span>★ major</span>
+                  <span>☆ minor</span>
+                  <span style={{ marginLeft:"auto" }}>{query.active.terms.length} term{query.active.terms.length === 1 ? "" : "s"}</span>
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </section>
+    </aside>
+  );
+}
+
 function Highlight({ text, query, color = "#FFD700" }) {
   if (!query.trim()) return <>{text}</>;
   const idx = String(text).toLowerCase().indexOf(query.toLowerCase());

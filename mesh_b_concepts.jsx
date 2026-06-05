@@ -764,6 +764,7 @@ export default function MeshBConcepts() {
         B04: "#C8C8E8",
       }}
       defaultCluster="B01"
+      inspectorLayout="rightDock"
     />
   );
 }

@@ -338,36 +338,11 @@ function ScaleOfObservation({ data }) {
   return (
     <div style={{ height: "100%", overflow: "hidden" }}>
       <div style={{ height: "100%", padding: "24px 24px 230px", boxSizing: "border-box", overflowY: "auto", display: "flex", flexDirection: "column", gap: 0 }}>
-        <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff33", letterSpacing: 2, marginBottom: 16 }}>
-          SCALE OF OBSERVATION — from abstract/physical to whole organism
-        </div>
-        {renderSelectedDetail(detailColor)}
-
         {SCALE_GROUPS.map((group, gi) => {
           const groupBranches = branches.filter(b => group.branches.includes(b.treeNum));
-          const isLast = gi === SCALE_GROUPS.length - 1;
           return (
             <div key={group.id} style={{ display: "flex", gap: 0, position: "relative" }}>
-              {/* Vertical connector line */}
-              {!isLast && (
-                <div style={{ position: "absolute", left: 139, top: "100%", width: 2, height: 16, background: group.color + "33", zIndex: 1 }} />
-              )}
-              {/* Scale label */}
-              <div style={{
-                width: 140,
-                flexShrink: 0,
-                padding: "16px 16px 16px 0",
-                borderRight: `3px solid ${group.color}`,
-                marginBottom: 16,
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "center",
-              }}>
-                <div style={{ fontFamily: mono, fontSize: 9, color: group.color, fontWeight: 700, letterSpacing: 2, textAlign: "right" }}>{group.label}</div>
-                <div style={{ fontFamily: mono, fontSize: 7.5, color: group.color + "77", textAlign: "right", marginTop: 2 }}>{group.sublabel}</div>
-              </div>
-              {/* Branch chips */}
-              <div style={{ flex: 1, padding: "16px 0 16px 16px", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginBottom: 0 }}>
+              <div style={{ flex: 1, padding: "8px 0", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginBottom: 0 }}>
                 {groupBranches.map(b => {
                   const isSel = selected === b.treeNum;
                   const collected = queryBuilder.allIds.has(b.term.name);
@@ -413,9 +388,6 @@ function ScaleOfObservation({ data }) {
                     }}
                   >
                     <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 8 }}>
-                      <div style={{ fontFamily: mono, fontSize: 7, color: group.color + "aa", letterSpacing: 1.5 }}>
-                        EXPANDED TERMS
-                      </div>
                       <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff42" }}>
                         {selected}
                       </div>
@@ -431,15 +403,53 @@ function ScaleOfObservation({ data }) {
         })}
 
         {ungrouped.length > 0 && (
-          <div style={{ marginTop: 16, padding: "12px 0", borderTop: "1px solid #ffffff08" }}>
-            <div style={{ fontFamily: mono, fontSize: 7, color: "#ffffff22", letterSpacing: 2, marginBottom: 8 }}>UNCATEGORIZED</div>
+          <div style={{ marginTop: 8, padding: "8px 0" }}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {ungrouped.map(b => (
-                <div key={b.treeNum} style={{ fontFamily: mono, fontSize: 9, color: "#ffffff44", background: "#ffffff06", border: "1px solid #ffffff0a", borderRadius: 6, padding: "5px 10px" }}>
-                  {b.treeNum} · {b.term.name}
-                </div>
-              ))}
+              {ungrouped.map(b => {
+                const isSel = selected === b.treeNum;
+                const collected = queryBuilder.allIds.has(b.term.name);
+                return (
+                  <button
+                    key={b.treeNum}
+                    type="button"
+                    onClick={() => {
+                      setSelected(isSel ? null : b.treeNum);
+                      setSelectedTag(null);
+                      setExpandedNodes([]);
+                    }}
+                    style={{
+                      fontFamily: mono,
+                      fontSize: 9.5,
+                      color: isSel ? "#fff" : collected ? TREE_COLOR : TREE_COLOR,
+                      background: isSel ? TREE_COLOR + "28" : collected ? TREE_COLOR + "1d" : TREE_COLOR + "12",
+                      border: `1px solid ${isSel ? TREE_COLOR : collected ? TREE_COLOR + "66" : TREE_COLOR + "44"}`,
+                      borderRadius: 6,
+                      padding: "7px 12px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <span style={{ fontSize: 7, opacity: 0.6, marginRight: 5 }}>{b.treeNum}</span>
+                    {b.term.name}
+                    <span style={{ fontSize: 7.5, marginLeft: 8, opacity: 0.55 }}>{b.totalCount.toLocaleString()}</span>
+                  </button>
+                );
+              })}
             </div>
+            {ungrouped.some(b => b.treeNum === selected) && (
+              <div
+                style={{
+                  marginTop: 8,
+                  padding: 12,
+                  background: TREE_COLOR + "08",
+                  border: `1px solid ${TREE_COLOR + "24"}`,
+                  borderRadius: 8,
+                }}
+              >
+                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 3 }}>
+                  {renderChildTags(selected, TREE_COLOR)}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

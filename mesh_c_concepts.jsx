@@ -314,7 +314,6 @@ function BodyMap({ data }) {
   function renderSpecialExplorer(rootTreeNum, color) {
     return (
       <div>
-        {renderSelectedTagDetail(rootTreeNum, color)}
         <div style={{ display:"flex", flexWrap:"wrap", alignItems:"flex-start", gap:4 }}>
           {renderTagTree(rootTreeNum, color)}
         </div>
@@ -324,17 +323,21 @@ function BodyMap({ data }) {
 
   // ── Right panel ──────────────────────────────────────────────────────────
   function renderPanel() {
-    if (isOverviewSel()) return (
+    const selectedRootTreeNum = sel.type === "region" || sel.type === "systemicBranch" || sel.type === "special"
+      ? sel.id
+      : isDistSel()
+        ? "C20"
+        : null;
+
+    return (
       <div style={{ padding:"20px 24px" }}>
-        <div style={{ fontFamily:mono, fontSize:8, color:TREE_COLOR, letterSpacing:2, marginBottom:6 }}>TOP-LEVEL C TREE</div>
-        <div style={{ fontFamily:mono, fontSize:13, color:"#e8e8e8", fontWeight:700, marginBottom:8 }}>Disease Branch Landscape</div>
-        <div style={{ fontFamily:mono, fontSize:9, color:"#ffffff44", lineHeight:1.8, marginBottom:18 }}>
-          The C tree starts as broad disease branches. Some are anatomical, some are systemic or causal, and some are contextual. Select any tag below or use the body map.
-        </div>
         <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
           {ANATOMY_GROUPS.map(group => {
             const groupBranches = group.branches.map(tn => byTN[tn]).filter(Boolean);
             const total = groupBranches.reduce((sum, branch) => sum + branch.totalCount, 0);
+            const activeInGroup = selectedRootTreeNum && group.branches.includes(selectedRootTreeNum);
+            const activeBranch = activeInGroup ? byTN[selectedRootTreeNum] : null;
+            const activeColor = activeInGroup ? groupColor(selectedRootTreeNum) : group.color;
             return (
               <div key={group.id} style={{ padding:12, background:group.color+"08", border:`1px solid ${group.color}24`, borderRadius:8 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:10, marginBottom:8 }}>
@@ -353,6 +356,7 @@ function BodyMap({ data }) {
                         : systemic
                           ? { type:"systemicBranch", id:branch.treeNum }
                           : { type:"region", id:branch.treeNum };
+                    const active = selectedRootTreeNum === branch.treeNum;
                     return (
                       <button
                         key={branch.treeNum}
@@ -363,13 +367,13 @@ function BodyMap({ data }) {
                           alignItems:"center",
                           gap:6,
                           padding:"5px 8px",
-                          background:group.color+"12",
-                          border:`1px solid ${group.color}34`,
+                          background:active ? group.color+"24" : group.color+"12",
+                          border:`1px solid ${active ? group.color+"90" : group.color+"34"}`,
                           borderRadius:999,
                           cursor:"pointer",
                           fontFamily:mono,
                           fontSize:8,
-                          color:"#ffffffb8",
+                          color:active ? "#fff" : "#ffffffb8",
                           lineHeight:1.25,
                         }}
                       >
@@ -380,167 +384,27 @@ function BodyMap({ data }) {
                     );
                   })}
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-
-    if (isSysSel()) return (
-      <div style={{ padding:"20px 24px" }}>
-        <div style={{ fontFamily:mono, fontSize:8, color:TREE_COLOR, letterSpacing:2, marginBottom:6 }}>CROSS-CUTTING BRANCHES</div>
-        <div style={{ fontFamily:mono, fontSize:13, color:"#e8e8e8", fontWeight:700, marginBottom:8 }}>Systemic Diseases</div>
-        <div style={{ fontFamily:mono, fontSize:9, color:"#ffffff44", lineHeight:1.8, marginBottom:20 }}>
-          These four branches span all organ systems — organized by mechanism or etiology rather than anatomy. Together ~37% of all C terms.
-        </div>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-          {SYSTEMIC_TNS.map(tn => {
-            const b = byTN[tn]; if (!b) return null;
-            return (
-              <div key={tn} style={{ padding:"12px 14px", background:"#ffffff08", border:"1px solid #ffffff0e", borderLeft:`3px solid ${TREE_COLOR}55`, borderRadius:4 }}>
-                <div style={{ fontFamily:mono, fontSize:8, color:TREE_COLOR, marginBottom:3 }}>{tn}</div>
-                <div style={{ fontFamily:mono, fontSize:11, color:"#e8e8e8", fontWeight:700, marginBottom:4, lineHeight:1.3 }}>{b.term.name}</div>
-                <div style={{ fontFamily:mono, fontSize:8, color:"#ffffff33", marginBottom:6 }}>{b.totalCount.toLocaleString()} terms</div>
-                {b.term.note && <div style={{ fontFamily:mono, fontSize:8.5, color:"#ffffff44", lineHeight:1.5 }}>{b.term.note.slice(0,130)}…</div>}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-
-    if (isDistSel()) return (
-      <div style={{ padding:"20px 24px" }}>
-        <div style={{ fontFamily:mono, fontSize:8, color:"#DDB892", letterSpacing:2, marginBottom:6 }}>DISTRIBUTED SYSTEMS</div>
-        <div style={{ fontFamily:mono, fontSize:13, color:"#e8e8e8", fontWeight:700, marginBottom:8 }}>Whole-Body Disease Systems</div>
-        <div style={{ fontFamily:mono, fontSize:9, color:"#ffffff44", lineHeight:1.8, marginBottom:16 }}>
-          These branches affect the whole body — no single anatomical home.
-        </div>
-        {DIST_REGION.branches.map(tn => (
-          <div key={tn} style={{ marginBottom:14 }}>
-            {renderSpecialExplorer(tn, "#DDB892")}
-          </div>
-        ))}
-      </div>
-    );
-
-    if (sel.type === "systemicBranch") {
-      const cfg = SYSTEMIC_CFG.find(s => s.treeNum === sel.id);
-      const b = byTN[sel.id];
-      if (!cfg || !b) return null;
-      return (
-        <div style={{ padding:"20px 24px" }}>
-          <div style={{ fontFamily:mono, fontSize:8, color:cfg.color, letterSpacing:2, marginBottom:6 }}>{sel.id} · SYSTEMIC</div>
-          <div style={{ fontFamily:mono, fontSize:13, color:"#e8e8e8", fontWeight:700, marginBottom:8 }}>{b.term.name}</div>
-          {b.term.note && (
-            <div style={{ fontFamily:mono, fontSize:9, color:"#ffffff44", lineHeight:1.7, marginBottom:16 }}>
-              {b.term.note}
-            </div>
-          )}
-          <div style={{ fontFamily:mono, fontSize:8, color:"#ffffff33", marginBottom:10 }}>{b.totalCount.toLocaleString()} total terms</div>
-          {renderSpecialExplorer(sel.id, cfg.color)}
-        </div>
-      );
-    }
-
-    if (sel.type === "region") {
-      const region = REGIONS.find(r => r.id === sel.id); if (!region) return null;
-      return (
-        <div style={{ padding:"20px 24px" }}>
-          <div style={{ fontFamily:mono, fontSize:8, color:region.color, letterSpacing:2, marginBottom:6 }}>{region.label.toUpperCase()}</div>
-          {region.branches.map(tn => {
-            const b = byTN[tn]; if (!b) return null;
-            return (
-              <div key={tn} style={{ marginBottom:14 }}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:4 }}>
-                  <div>
-                    <span style={{ fontFamily:mono, fontSize:8, color:region.color }}>{tn} · </span>
-                    <span style={{ fontFamily:mono, fontSize:11, color:"#e8e8e8", fontWeight:700 }}>{b.term.name}</span>
+                {activeInGroup && (
+                  <div style={{
+                    marginTop:10,
+                    padding:10,
+                    background:activeColor+"09",
+                    border:`1px solid ${activeColor+"24"}`,
+                    borderRadius:8,
+                  }}>
+                    <div style={{ display:"flex", alignItems:"baseline", gap:8, marginBottom:8 }}>
+                      <div style={{ fontFamily:mono, fontSize:7, color:activeColor+"aa", letterSpacing:1.5 }}>{selectedRootTreeNum}</div>
+                      <div style={{ fontFamily:mono, fontSize:8, color:"#ffffff42" }}>{activeBranch?.term.name}</div>
+                    </div>
+                    {renderSpecialExplorer(selectedRootTreeNum, activeColor)}
                   </div>
-                  <span style={{ fontFamily:mono, fontSize:8, color:"#ffffff33", flexShrink:0, marginLeft:8 }}>{b.totalCount} terms</span>
-                </div>
-                {b.term.note && <div style={{ fontFamily:mono, fontSize:8.5, color:"#ffffff44", lineHeight:1.5, marginBottom:8 }}>{b.term.note.slice(0,160)}…</div>}
-                {renderSpecialExplorer(tn, region.color)}
+                )}
               </div>
             );
           })}
-          <div style={{ marginTop:4, padding:"8px 12px", background:"#ffffff04", borderRadius:4, fontFamily:mono, fontSize:8, color:"#ffffff22" }}>
-            Systemic diseases (infections, neoplasms, congenital) can also manifest in this region
-          </div>
         </div>
-      );
-    }
-
-    if (sel.type === "special") {
-      const cfg = SPECIAL_CFG.find(s => s.treeNum === sel.id); if (!cfg) return null;
-      const b   = byTN[sel.id];
-      const kids = childrenMap.get(sel.id) || [];
-
-      // Animal Diseases
-      if (sel.id === "C22") return (
-        <div style={{ padding:"20px 24px" }}>
-          <div style={{ fontFamily:mono, fontSize:8, color:cfg.color, letterSpacing:2, marginBottom:4 }}>C22 · ANIMAL DISEASES</div>
-          <div style={{ fontFamily:mono, fontSize:12, color:"#e8e8e8", fontWeight:700, marginBottom:6 }}>{b?.totalCount} terms across {kids.length} host-species groups</div>
-          <div style={{ fontFamily:mono, fontSize:9, color:"#ffffff44", lineHeight:1.7, marginBottom:16 }}>
-            Select tags to drill down through host-species disease groups.
-          </div>
-          {renderSpecialExplorer("C22", cfg.color)}
-        </div>
-      );
-
-      // Chemically-Induced
-      if (sel.id === "C25") return (
-        <div style={{ padding:"20px 24px" }}>
-          <div style={{ fontFamily:mono, fontSize:8, color:cfg.color, letterSpacing:2, marginBottom:4 }}>C25 · CHEMICALLY-INDUCED</div>
-          <div style={{ fontFamily:mono, fontSize:12, color:"#e8e8e8", fontWeight:700, marginBottom:8 }}>{b?.totalCount} terms · {kids.length} branches</div>
-          <div style={{ fontFamily:mono, fontSize:9, color:"#ffffff44", lineHeight:1.7, marginBottom:16 }}>
-            Select tags to inspect lower-level drug, poisoning, and substance-related terms.
-          </div>
-          {renderSpecialExplorer("C25", cfg.color)}
-        </div>
-      );
-
-      // Occupational Diseases
-      if (sel.id === "C24") return (
-        <div style={{ padding:"20px 24px" }}>
-          <div style={{ fontFamily:mono, fontSize:8, color:cfg.color, letterSpacing:2, marginBottom:4 }}>C24 · OCCUPATIONAL DISEASES</div>
-          <div style={{ fontFamily:mono, fontSize:12, color:"#e8e8e8", fontWeight:700, marginBottom:8 }}>{b?.totalCount} terms · {kids.length} categories</div>
-          <div style={{ fontFamily:mono, fontSize:9, color:"#ffffff44", lineHeight:1.7, marginBottom:16 }}>
-            Small branch, but still navigable with the same tag model.
-          </div>
-          {renderSpecialExplorer("C24", cfg.color)}
-        </div>
-      );
-
-      // Wounds & Injuries
-      if (sel.id === "C26") return (
-        <div style={{ padding:"20px 24px" }}>
-          <div style={{ fontFamily:mono, fontSize:8, color:cfg.color, letterSpacing:2, marginBottom:4 }}>C26 · WOUNDS & INJURIES</div>
-          <div style={{ fontFamily:mono, fontSize:12, color:"#e8e8e8", fontWeight:700, marginBottom:8 }}>
-            {b?.totalCount} terms · {kids.length} injury types — widest, flattest branch in C
-          </div>
-          <div style={{ fontFamily:mono, fontSize:9, color:"#ffffff44", lineHeight:1.7, marginBottom:16 }}>
-            Select injury-type tags to see lower-level terms.
-          </div>
-          {renderSpecialExplorer("C26", cfg.color)}
-        </div>
-      );
-
-      // Environmental Origin (stub)
-      if (sel.id === "C21") return (
-        <div style={{ padding:"20px 24px" }}>
-          <div style={{ fontFamily:mono, fontSize:8, color:cfg.color, letterSpacing:2, marginBottom:4 }}>C21 · ENVIRONMENTAL ORIGIN</div>
-          <div style={{ fontFamily:mono, fontSize:12, color:"#e8e8e8", fontWeight:700, marginBottom:8 }}>Stub — {b?.totalCount} terms only</div>
-          <div style={{ fontFamily:mono, fontSize:9, color:"#ffffff44", lineHeight:1.8, marginBottom:16 }}>
-            Only 2 direct children and 4 terms total in the 2026 edition — a category that exists in name but remains almost empty.
-          </div>
-          {renderSpecialExplorer("C21", cfg.color)}
-        </div>
-      );
-    }
-
-    return null;
+      </div>
+    );
   }
 
   const activeDetailTreeNum = selectedTag || (sel.id && treeIndex.has(sel.id) ? sel.id : null);
@@ -553,7 +417,13 @@ function BodyMap({ data }) {
     treeNum: activeDetailTreeNum,
     ui: activeDetailEntry.term.ui,
     note: activeDetailEntry.term.note || activeDetailEntry.term.scopeNote,
-  } : null;
+  } : {
+    id: "Diseases",
+    branch: "c",
+    color: TREE_COLOR,
+    treeNum: "C",
+    note: "Disease branches mix body systems, systemic causes, injuries, infections, animal disease, chemically induced disease, and occupational conditions.",
+  };
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
