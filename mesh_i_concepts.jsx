@@ -365,12 +365,6 @@ function SocialSciences({ data }) {
   );
 }
 
-// ── APP ────────────────────────────────────────────────────────────────────
-const VIEWS = [
-  { id: "spheres", label: "1. Three Spheres" },
-  { id: "social",  label: "2. Social Sciences" },
-];
-
 export default function MeshIConcepts() {
   return (
     <OverviewConceptShell

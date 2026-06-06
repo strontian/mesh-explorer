@@ -743,13 +743,6 @@ function SizeDepthScatter({ data }) {
   );
 }
 
-// ── APP ────────────────────────────────────────────────────────────────────
-const VIEWS = [
-  { id: "kingdoms", label: "1. Kingdoms" },
-  { id: "tree",     label: "2. Taxonomy Tree" },
-  { id: "scatter",  label: "3. Size vs Depth" },
-];
-
 export default function MeshBConcepts() {
   return (
     <OverviewConceptShell
@@ -764,7 +757,6 @@ export default function MeshBConcepts() {
         B04: "#C8C8E8",
       }}
       defaultCluster="B01"
-      inspectorLayout="rightDock"
     />
   );
 }

@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import {
-  FloatingMeshDetailPanel,
-  FloatingMeshQueryPanel,
+  MeshBottomQueryLayout,
   usePersistentMeshQueries,
 } from "./mesh_query_ui.jsx";
 import { MeshPageHeader } from "./mesh_page_header.jsx";
@@ -482,7 +481,7 @@ function DisciplinesOverviewMap({ data }) {
   }
 
   return (
-    <div style={{ height: "100%", overflowY: "auto", padding: 24, paddingBottom: 230 }}>
+    <MeshBottomQueryLayout selected={selectedDetail} query={queryBuilder} contentStyle={{ padding: 24 }}>
       <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff33", letterSpacing: 2, marginBottom: 16 }}>
         DISCIPLINES — OVERVIEW WITH QUERY BUILDER
       </div>
@@ -565,9 +564,7 @@ function DisciplinesOverviewMap({ data }) {
         </main>
       </div>
 
-      <FloatingMeshDetailPanel selected={selectedDetail} query={queryBuilder} />
-      <FloatingMeshQueryPanel query={queryBuilder} />
-    </div>
+    </MeshBottomQueryLayout>
   );
 }
 
@@ -808,7 +805,7 @@ export default function MeshHConcepts() {
   const { data, loading } = useHData();
 
   return (
-    <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: BG }}>
+    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: BG }}>
       <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
       <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
 

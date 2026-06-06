@@ -175,7 +175,7 @@ function useMeshData() {
 function LoadingScreen() {
   return (
     <div style={{
-      width: "100%", height: "100vh",
+      width: "100%", height: "100%",
       background: "#111418",
       display: "flex", flexDirection: "column",
       alignItems: "center", justifyContent: "center",
@@ -284,6 +284,7 @@ function GalaxyView({ onSelect, meshData }) {
         {TREE_META.map((tree, i) => {
           const isHov = hovered === tree.id;
           const branchCount = meshData?.childrenMap?.get(tree.id)?.length ?? "…";
+          const branchLabel = branchCount === 1 ? "branch" : "branches";
           return (
             <div
               key={tree.id}
@@ -346,317 +347,32 @@ function GalaxyView({ onSelect, meshData }) {
                 fontFamily: "'IBM Plex Mono',monospace", fontSize: 8,
                 color: isHov ? tree.color : "#ffffff22",
                 marginTop: 2,
+                minHeight: 12,
+                lineHeight: "12px",
+                display: "flex",
+                alignItems: "center",
               }}>
-                {isHov ? "click to explore →" : `${branchCount} top-level branches`}
+                {isHov ? "click to explore →" : `${branchCount} top-level ${branchLabel}`}
               </div>
             </div>
           );
         })}
-      </div>
-    </div>
-  );
-}
-
-// ── PLANET VIEW ───────────────────────────────────────────────────────────
-function PlanetView({ tree, onSelectBranch, onBack, meshData }) {
-  const [hovered, setHovered] = useState(null);
-  const branches = meshData?.childrenMap?.get(tree.id) ?? [];
-
-  return (
-    <div style={{
-      width: "100%", height: "100%",
-      background: "#111418",
-      display: "flex", flexDirection: "column",
-      overflow: "hidden",
-    }}>
-      {/* Header */}
-      <div style={{
-        display: "flex", alignItems: "center",
-        borderBottom: `1px solid ${tree.color}33`,
-        flexShrink: 0,
-      }}>
-        <button onClick={onBack} style={{
-          fontFamily: "'IBM Plex Mono',monospace", fontSize: 9,
-          color: "#ffffff66", background: "transparent",
-          border: "none", borderRight: "1px solid #ffffff12",
-          padding: "14px 16px", cursor: "pointer", letterSpacing: 1,
-        }}>
-          ← ALL TREES
-        </button>
-        <div style={{ padding: "14px 20px", flex: 1 }}>
-          <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 14, color: tree.color, fontWeight: 700 }}>
-            {tree.id} — {tree.name}
-          </span>
-          <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: "#ffffff44", marginLeft: 16 }}>
-            {tree.size} · {tree.depth}
-          </span>
-        </div>
-      </div>
-
-      {/* Description */}
-      <div style={{ padding: "14px 24px", borderBottom: "1px solid #ffffff08", flexShrink: 0 }}>
-        <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: "#ffffffcc", lineHeight: 1.7 }}>
-          {tree.description}
-        </div>
-        <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: tree.color + "bb", marginTop: 6, lineHeight: 1.5 }}>
-          {tree.character}
-        </div>
-      </div>
-
-      {/* Branch grid */}
-      <div style={{
-        flex: 1, overflowY: "auto",
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-        gap: 1, padding: 1, background: "#1a1d22",
-      }}>
-        {branches.map((branch, i) => {
-          const isHov = hovered === branch.treeNum;
-          const childCount = meshData?.childrenMap?.get(branch.treeNum)?.length ?? 0;
-          return (
-            <div
-              key={branch.treeNum}
-              onClick={() => onSelectBranch(branch)}
-              onMouseEnter={() => setHovered(branch.treeNum)}
-              onMouseLeave={() => setHovered(null)}
-              style={{
-                padding: "16px 18px",
-                background: isHov ? "#1e2228" : "#111418",
-                borderLeft: `3px solid ${isHov ? tree.color : tree.color + "33"}`,
-                cursor: "pointer", transition: "all 0.15s ease",
-              }}
-            >
-              <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "#ffffff33", marginBottom: 3 }}>
-                {branch.treeNum}
-              </div>
-              <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, color: "#e8e8e8", fontWeight: 600, marginBottom: 6 }}>
-                {branch.term.name}
-              </div>
-              {branch.term.note && (
-                <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: "#ffffff44", lineHeight: 1.5, marginBottom: 6 }}>
-                  {branch.term.note.slice(0, 120)}{branch.term.note.length > 120 ? "…" : ""}
-                </div>
-              )}
-              <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: "#ffffff33" }}>
-                {childCount} sub-branches
-              </div>
-              {isHov && (
-                <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: tree.color, marginTop: 8 }}>
-                  explore terms →
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ── SURFACE VIEW ──────────────────────────────────────────────────────────
-function SurfaceView({ tree, branch, onBack, onBackToPlanet, meshData }) {
-  const [selected, setSelected] = useState(null);
-  const [expanded, setExpanded] = useState(new Set());
-
-  const mono = "'IBM Plex Mono',monospace";
-
-  function toggleExpand(treeNum) {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      next.has(treeNum) ? next.delete(treeNum) : next.add(treeNum);
-      return next;
-    });
-  }
-
-  function renderTerms(parentKey, depth = 0) {
-    const children = meshData?.childrenMap?.get(parentKey) ?? [];
-    if (!children.length) return null;
-
-    return children.map(({ term, treeNum }) => {
-      const hasChildren = !!(meshData?.childrenMap?.get(treeNum)?.length);
-      const isSelected = selected?.treeNum === treeNum;
-      const isExpanded = expanded.has(treeNum);
-
-      return (
-        <div key={treeNum}>
-          <div
-            onClick={() => {
-              setSelected(isSelected ? null : { ...term, treeNum });
-              if (hasChildren) toggleExpand(treeNum);
-            }}
-            style={{
-              display: "flex", alignItems: "flex-start", gap: 8,
-              padding: "6px 10px",
-              paddingLeft: `${10 + depth * 14}px`,
-              background: isSelected ? `${tree.color}22` : "transparent",
-              borderLeft: isSelected ? `2px solid ${tree.color}` : "2px solid transparent",
-              cursor: "pointer", transition: "all 0.12s", marginBottom: 1,
-            }}
-          >
-            <span style={{ fontFamily: mono, fontSize: 10, color: "#ffffff44", flexShrink: 0, marginTop: 1, width: 10 }}>
-              {hasChildren ? (isExpanded ? "▾" : "▸") : "·"}
-            </span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: mono, fontSize: 11, color: isSelected ? "#e8e8e8" : "#c0c0c0", lineHeight: 1.3 }}>
-                {term.name}
-              </div>
-              {term.note && !isSelected && (
-                <div style={{ fontFamily: mono, fontSize: 9, color: "#ffffff44", marginTop: 2, lineHeight: 1.5, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
-                  {term.note.slice(0, 90)}{term.note.length > 90 ? "…" : ""}
-                </div>
-              )}
-            </div>
-            {hasChildren && (
-              <span style={{ fontFamily: mono, fontSize: 8, color: "#ffffff33", marginTop: 2, flexShrink: 0 }}>
-                +{meshData.childrenMap.get(treeNum).length}
-              </span>
-            )}
-          </div>
-          {hasChildren && isExpanded && (
-            <div style={{ borderLeft: `1px solid ${tree.color}22`, marginLeft: 20 }}>
-              {renderTerms(treeNum, depth + 1)}
-            </div>
-          )}
-        </div>
-      );
-    });
-  }
-
-  // Build breadcrumb path from treeNum
-  function buildPath(treeNum) {
-    const parts = treeNum.split(".");
-    return parts.map((_, i) => parts.slice(0, i + 1).join(".")).join(" → ");
-  }
-
-  return (
-    <div style={{
-      width: "100%", height: "100%", background: "#111418",
-      display: "flex", flexDirection: "column", overflow: "hidden",
-    }}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", borderBottom: `1px solid ${tree.color}33`, flexShrink: 0 }}>
-        <button onClick={onBack} style={{ fontFamily: mono, fontSize: 9, color: "#ffffff66", background: "transparent", border: "none", borderRight: "1px solid #ffffff12", padding: "14px 16px", cursor: "pointer", letterSpacing: 1 }}>
-          ← ALL TREES
-        </button>
-        <button onClick={onBackToPlanet} style={{ fontFamily: mono, fontSize: 9, color: "#ffffff66", background: "transparent", border: "none", borderRight: "1px solid #ffffff12", padding: "14px 16px", cursor: "pointer", letterSpacing: 1 }}>
-          ← {tree.name}
-        </button>
-        <div style={{ padding: "14px 20px" }}>
-          <span style={{ fontFamily: mono, fontSize: 12, color: tree.color, fontWeight: 700 }}>
-            {branch.treeNum} / {branch.term.name}
-          </span>
-        </div>
-      </div>
-
-      {/* Body */}
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-
-        {/* Left: term tree */}
-        <div style={{ width: 340, borderRight: "1px solid #ffffff0e", overflowY: "auto", padding: "12px 0", flexShrink: 0 }}>
-          <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff33", letterSpacing: 2, marginBottom: 10, paddingLeft: 12 }}>
-            TERMS
-          </div>
-          {renderTerms(branch.treeNum)}
-        </div>
-
-        {/* Right: detail */}
-        <div style={{ flex: 1, padding: 24, overflowY: "auto" }}>
-          {selected ? (
-            <div style={{ animation: "fadeIn 0.15s ease" }}>
-              <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff33", letterSpacing: 2, marginBottom: 6 }}>
-                {selected.treeNum}
-              </div>
-              <div style={{ fontFamily: mono, fontSize: 15, color: tree.color, fontWeight: 700, marginBottom: 12 }}>
-                {selected.name}
-              </div>
-              <div style={{ fontFamily: mono, fontSize: 10, color: "#ffffffbb", lineHeight: 1.8, marginBottom: 20 }}>
-                {selected.note || "A MeSH controlled vocabulary term used to index biomedical literature."}
-              </div>
-
-              {/* Child terms preview */}
-              {meshData?.childrenMap?.get(selected.treeNum)?.length > 0 && (
-                <div style={{ marginBottom: 20 }}>
-                  <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff33", letterSpacing: 2, marginBottom: 8 }}>
-                    CHILD TERMS ({meshData.childrenMap.get(selected.treeNum).length})
-                  </div>
-                  {meshData.childrenMap.get(selected.treeNum).slice(0, 10).map(({ term: ct, treeNum: ctn }) => (
-                    <div key={ctn} style={{
-                      padding: "7px 12px", marginBottom: 3,
-                      background: "#ffffff08",
-                      borderLeft: `2px solid ${tree.color}44`,
-                      borderRadius: 3,
-                    }}>
-                      <div style={{ fontFamily: mono, fontSize: 9, color: "#ffffff55", marginBottom: 2 }}>{ctn}</div>
-                      <div style={{ fontFamily: mono, fontSize: 10, color: "#d0d0d0" }}>{ct.name}</div>
-                      {ct.note && (
-                        <div style={{ fontFamily: mono, fontSize: 9, color: "#ffffff44", marginTop: 2 }}>
-                          {ct.note.slice(0, 120)}{ct.note.length > 120 ? "…" : ""}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  {meshData.childrenMap.get(selected.treeNum).length > 10 && (
-                    <div style={{ fontFamily: mono, fontSize: 9, color: "#ffffff33", padding: "6px 12px" }}>
-                      + {meshData.childrenMap.get(selected.treeNum).length - 10} more — expand in the left panel
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div style={{ padding: "10px 14px", background: "#ffffff06", borderRadius: 4, border: "1px solid #ffffff0e" }}>
-                <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff33", letterSpacing: 2, marginBottom: 4 }}>PATH IN TREE</div>
-                <div style={{ fontFamily: mono, fontSize: 9, color: "#ffffff66" }}>
-                  {tree.id} → {buildPath(selected.treeNum)}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
-              <div style={{ fontSize: 28, marginBottom: 12 }}>{tree.emoji}</div>
-              <div style={{ fontFamily: mono, fontSize: 10, color: "#ffffff44", lineHeight: 1.8 }}>
-                {branch.term.name}
-              </div>
-              <div style={{ fontFamily: mono, fontSize: 9, color: "#ffffff22", marginTop: 6 }}>
-                select a term to see details
-              </div>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );
 }
 
 // ── APP ────────────────────────────────────────────────────────────────────
-export default function MeshCosmos({ onNamedGroups, onPsychology, onGeography, onPublications, onDiseases, onChemicals }) {
-  const [view, setView] = useState("galaxy");
-  const [selectedTree, setSelectedTree] = useState(null);
-  const [selectedBranch, setSelectedBranch] = useState(null);
-
+export default function MeshCosmos({ onTreeSelect }) {
   const { data: meshData, loading, error } = useMeshData();
 
   function handleSelect(tree) {
-    if (tree.id === "M" && onNamedGroups) {
-      onNamedGroups();
-    } else if (tree.id === "F" && onPsychology) {
-      onPsychology();
-    } else if (tree.id === "Z" && onGeography) {
-      onGeography();
-    } else if (tree.id === "V" && onPublications) {
-      onPublications();
-    } else if (tree.id === "C" && onDiseases) {
-      onDiseases();
-    } else if (tree.id === "D" && onChemicals) {
-      onChemicals();
-    } else {
-      setSelectedTree(tree);
-      setView("planet");
-    }
+    onTreeSelect?.(tree.id.toLowerCase());
   }
 
   if (loading) return <LoadingScreen />;
   if (error) return (
-    <div style={{ width: "100%", height: "100vh", background: "#111418", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div style={{ width: "100%", height: "100%", background: "#111418", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "#FF9A9E" }}>
         Failed to load mesh-terms.json: {error.message}
       </div>
@@ -664,29 +380,10 @@ export default function MeshCosmos({ onNamedGroups, onPsychology, onGeography, o
   );
 
   return (
-    <div style={{ width: "100%", height: "100vh", position: "relative", overflow: "hidden" }}>
+    <div style={{ width: "100%", height: "100%", position: "relative", overflow: "hidden" }}>
       <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
 
-      {view === "galaxy" && (
-        <GalaxyView onSelect={handleSelect} meshData={meshData} />
-      )}
-      {view === "planet" && selectedTree && (
-        <PlanetView
-          tree={selectedTree}
-          onSelectBranch={(branch) => { setSelectedBranch(branch); setView("surface"); }}
-          onBack={() => setView("galaxy")}
-          meshData={meshData}
-        />
-      )}
-      {view === "surface" && selectedTree && selectedBranch && (
-        <SurfaceView
-          tree={selectedTree}
-          branch={selectedBranch}
-          onBack={() => { setView("galaxy"); }}
-          onBackToPlanet={() => setView("planet")}
-          meshData={meshData}
-        />
-      )}
+      <GalaxyView onSelect={handleSelect} meshData={meshData} />
     </div>
   );
 }

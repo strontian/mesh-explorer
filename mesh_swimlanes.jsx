@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import {
-  FloatingMeshDetailPanel,
-  FloatingMeshQueryPanel,
+  MeshBottomQueryLayout,
   usePersistentMeshQueries,
 } from "./mesh_query_ui.jsx";
 
@@ -598,7 +597,7 @@ export default function SwimLanes() {
 
   return (
     <div style={{
-      width:"100%", height:"calc(100vh - 78px)",
+      width:"100%", height:"100%",
       background:"#0f1117",
       display:"flex", flexDirection:"column",
       fontFamily:mono, overflow:"hidden"
@@ -615,6 +614,7 @@ export default function SwimLanes() {
       <Header selected={selected} onSelect={setSelected}/>
       <RootBar selected={selected} onSelect={setSelected} personNote={termByName.get("Persons")?.note || "Persons as individuals or as members of a group."}/>
 
+      <MeshBottomQueryLayout selected={selectedDetail} query={query} contentStyle={{ display:"flex", flexDirection:"column" }}>
       {/* Lane headers */}
       <div style={{
         display:"grid", gridTemplateColumns:"1fr 1fr 1.4fr",
@@ -739,11 +739,8 @@ export default function SwimLanes() {
             </div>
           )}
         </div>
-
-        <FloatingMeshDetailPanel selected={selectedDetail} query={query} />
-        <FloatingMeshQueryPanel query={query} />
-
       </div>
+      </MeshBottomQueryLayout>
     </div>
   );
 }

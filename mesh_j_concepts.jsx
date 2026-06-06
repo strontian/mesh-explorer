@@ -362,12 +362,6 @@ function J01Breakdown({ data }) {
   );
 }
 
-// ── APP ────────────────────────────────────────────────────────────────────
-const VIEWS = [
-  { id: "sectors", label: "1. Sector Cards" },
-  { id: "j01",     label: "2. J01 Breakdown" },
-];
-
 export default function MeshJConcepts() {
   return (
     <OverviewConceptShell

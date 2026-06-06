@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import {
-  FloatingMeshDetailPanel,
-  FloatingMeshQueryPanel,
+  MeshBottomQueryLayout,
   usePersistentMeshQueries,
 } from "./mesh_query_ui.jsx";
 import { MeshPageHeader } from "./mesh_page_header.jsx";
@@ -9,6 +8,14 @@ import { MeshPageHeader } from "./mesh_page_header.jsx";
 const mono = "'IBM Plex Mono', monospace";
 const BG = "#0f1117";
 const TREE_COLOR = "#C8C8A8";
+const ROOT_DETAIL = {
+  term: {
+    name: "Publications",
+    ui: "V",
+    note: "Publication terms describe publication components, publication formats, study characteristics, and types of research support.",
+  },
+  treeNum: "V",
+};
 
 // ── BRANCH CONFIG ─────────────────────────────────────────────────────────
 const BRANCH_CFG = {
@@ -89,152 +96,14 @@ function Loading() {
   );
 }
 
-// ── DOCUMENT ICON ─────────────────────────────────────────────────────────
-function DocIcon({ color }) {
-  return (
-    <svg width={20} height={24} viewBox="0 0 20 24" fill="none">
-      <rect x={1} y={1} width={14} height={22} rx={2} fill={color + "18"} stroke={color + "66"} strokeWidth={1}/>
-      <path d="M14 1 L19 6 L14 6 Z" fill={color + "33"} stroke={color + "55"} strokeWidth={0.8}/>
-      <line x1={4} y1={10} x2={12} y2={10} stroke={color + "55"} strokeWidth={0.8}/>
-      <line x1={4} y1={13} x2={12} y2={13} stroke={color + "44"} strokeWidth={0.8}/>
-      <line x1={4} y1={16} x2={9} y2={16} stroke={color + "33"} strokeWidth={0.8}/>
-    </svg>
-  );
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
-// SKETCH 1 — OUTLINE BOARD
-// Four compact columns, preserving hierarchy while keeping the whole tree visible.
-// ═══════════════════════════════════════════════════════════════════════════
-function OutlineBoard({ data }) {
-  const { childrenMap, branches } = data;
-  const [selected, setSelected] = useState(null);
-
-  function getChildren(treeNum) {
-    return (childrenMap.get(treeNum) || []).sort((a, b) =>
-      a.treeNum.localeCompare(b.treeNum, undefined, { numeric: true })
-    );
-  }
-
-  function countAll(treeNum) {
-    let n = 0;
-    const q = [...getChildren(treeNum)];
-    while (q.length) {
-      const item = q.shift();
-      n += 1;
-      q.push(...getChildren(item.treeNum));
-    }
-    return n;
-  }
-
-  function renderNode(item, depth, color) {
-    const kids = getChildren(item.treeNum);
-    const isSel = selected?.treeNum === item.treeNum;
-    return (
-      <div key={item.treeNum}>
-        <button
-          onClick={() => setSelected({ ...item, children: kids })}
-          style={{
-            width: "100%",
-            display: "grid",
-            gridTemplateColumns: "48px 1fr auto",
-            alignItems: "baseline",
-            gap: 6,
-            padding: "4px 7px",
-            paddingLeft: 7 + depth * 12,
-            background: isSel ? color + "22" : depth === 0 ? color + "0f" : "transparent",
-            border: `1px solid ${isSel ? color + "88" : "transparent"}`,
-            borderLeft: `2px solid ${kids.length ? color + "77" : "#ffffff14"}`,
-            borderRadius: 4,
-            color: isSel ? "#fff" : "#d8d8d8",
-            cursor: "pointer",
-            textAlign: "left",
-            fontFamily: mono,
-            fontSize: depth === 0 ? 8.3 : 7.8,
-            lineHeight: 1.25,
-          }}
-        >
-          <span style={{ color, fontSize: 7.4 }}>{item.treeNum}</span>
-          <span>{item.term.name}</span>
-          {kids.length > 0 && <span style={{ color: "#ffffff33", fontSize: 7 }}>+{kids.length}</span>}
-        </button>
-        {kids.length > 0 && kids.map(kid => renderNode(kid, depth + 1, color))}
-      </div>
-    );
-  }
-
-  const detail = selected || branches[1];
-  const detailChildren = detail ? getChildren(detail.treeNum) : [];
-
-  return (
-    <div style={{ height: "100%", display: "grid", gridTemplateRows: "auto 1fr auto", overflow: "hidden" }}>
-      <MeshPageHeader
-        letter="V"
-        title="Publication Characteristics"
-        description="A shallow, broad tree for publication components, formats, study characteristics, and research support."
-        color={TREE_COLOR}
-      />
-
-      <div style={{ overflow: "auto", padding: "14px 18px", display: "grid", gridTemplateColumns: "repeat(4, minmax(220px, 1fr))", gap: 10 }}>
-        {branches.map(branch => {
-          const cfg = branch.cfg || branchCfg(branch.treeNum);
-          return (
-            <section key={branch.treeNum} style={{ minWidth: 0, border: `1px solid ${cfg.color}22`, borderRadius: 7, background: "#ffffff04", overflow: "hidden" }}>
-              <div style={{ padding: "9px 10px", borderBottom: `1px solid ${cfg.color}22`, background: cfg.color + "0c" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                  <span style={{ color: cfg.color, fontFamily: mono, fontSize: 12 }}>{cfg.icon}</span>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontFamily: mono, fontSize: 8, color: cfg.color, letterSpacing: 1.4 }}>{branch.treeNum}</div>
-                    <div style={{ fontFamily: mono, fontSize: 9.2, color: "#e8e8e8", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{cfg.label}</div>
-                  </div>
-                  <div style={{ marginLeft: "auto", fontFamily: mono, fontSize: 7, color: "#ffffff33" }}>{branch.totalCount}</div>
-                </div>
-              </div>
-              <div style={{ padding: 7 }}>
-                {getChildren(branch.treeNum).map(item => renderNode(item, 0, cfg.color))}
-              </div>
-            </section>
-          );
-        })}
-      </div>
-
-      <div style={{ margin: "0 18px 16px", padding: "10px 14px", border: `1px solid ${detail ? branchCfg(detail.treeNum).color + "44" : "#ffffff10"}`, borderRadius: 7, background: "#ffffff08", fontFamily: mono, flexShrink: 0 }}>
-        {detail && (
-          <>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4 }}>
-              <span style={{ color: branchCfg(detail.treeNum).color, fontSize: 8 }}>{detail.treeNum}</span>
-              <span style={{ color: "#e8e8e8", fontSize: 11, fontWeight: 700 }}>{detail.term.name}</span>
-              <span style={{ color: "#ffffff33", fontSize: 8 }}>{countAll(detail.treeNum)} descendants</span>
-            </div>
-            {detail.term.note && (
-              <div style={{ color: "#ffffff55", fontSize: 8.5, lineHeight: 1.55, marginBottom: detailChildren.length ? 8 : 0 }}>
-                {detail.term.note}
-              </div>
-            )}
-            {detailChildren.length > 0 && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                {detailChildren.map(({ term, treeNum }) => (
-                  <span key={treeNum} style={{ padding: "3px 7px", borderRadius: 4, border: `1px solid ${branchCfg(detail.treeNum).color}2f`, background: branchCfg(detail.treeNum).color + "10", color: branchCfg(detail.treeNum).color + "cc", fontSize: 7.5 }}>
-                    {term.name}
-                  </span>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// SKETCH 2 — ALL TERMS (filterable chip list grouped by branch)
+// ALL TERMS — filterable chip list grouped by branch
 // ═══════════════════════════════════════════════════════════════════════════
 function AllTermsV({ data }) {
   const { allTerms, branches } = data;
   const [filter, setFilter] = useState("");
   const [hovered, setHovered] = useState(null);
-  const [selected, setSelected] = useState(null);
+  const [selected, setSelected] = useState("V");
   const queryBuilder = usePersistentMeshQueries();
 
   const filtered = allTerms.filter(t =>
@@ -249,9 +118,9 @@ function AllTermsV({ data }) {
     groups[topKey].push(item);
   }
 
-  const selectedItem = selected ? allTerms.find(t => t.treeNum === selected) : null;
+  const selectedItem = selected && selected !== "V" ? allTerms.find(t => t.treeNum === selected) : null;
   const hoveredItem = hovered ? allTerms.find(t => t.treeNum === hovered) : null;
-  const detailItem = selectedItem || hoveredItem;
+  const detailItem = selectedItem || hoveredItem || ROOT_DETAIL;
   const detailColor = detailItem ? branchCfg(detailItem.treeNum).color : TREE_COLOR;
   const selectedDetail = detailItem ? {
     id: detailItem.term.name,
@@ -263,7 +132,17 @@ function AllTermsV({ data }) {
   } : null;
 
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: "24px 24px 230px", boxSizing: "border-box", gap: 16, overflowY: "auto" }}>
+    <MeshBottomQueryLayout selected={selectedDetail} query={queryBuilder} contentStyle={{ display: "flex", flexDirection: "column", padding: "24px 24px", boxSizing: "border-box", gap: 16 }}>
+      <div style={{ margin: "-24px -24px 2px" }}>
+        <MeshPageHeader
+          letter="V"
+          title="Publications"
+          description="Publication terms describe components, formats, study characteristics, and research support."
+          color={TREE_COLOR}
+          onClick={() => setSelected("V")}
+          active={selected === "V" && !hovered}
+        />
+      </div>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <input
           value={filter}
@@ -365,9 +244,7 @@ function AllTermsV({ data }) {
           no terms match "{filter}"
         </div>
       )}
-      <FloatingMeshDetailPanel selected={selectedDetail} query={queryBuilder} />
-      <FloatingMeshQueryPanel query={queryBuilder} />
-    </div>
+    </MeshBottomQueryLayout>
   );
 }
 
@@ -375,7 +252,7 @@ export default function MeshVConcepts() {
   const { data, loading } = useVData();
 
   return (
-    <div style={{ width: "100%", height: "100vh", background: BG }}>
+    <div style={{ width: "100%", height: "100%", background: BG }}>
       <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
       {loading ? <Loading /> : <AllTermsV data={data} />}
     </div>

@@ -2,8 +2,7 @@ import { useState } from "react";
 import { LoadingMesh, useMeshTreeData } from "./mesh_overview_concept.jsx";
 import { BODY_SILHOUETTE_PATH } from "./mesh_c_concepts.jsx";
 import {
-  FloatingMeshDetailPanel,
-  FloatingMeshQueryPanel,
+  MeshBottomQueryLayout,
   usePersistentMeshQueries,
 } from "./mesh_query_ui.jsx";
 import { MeshPageHeader } from "./mesh_page_header.jsx";
@@ -11,6 +10,7 @@ import { MeshPageHeader } from "./mesh_page_header.jsx";
 const mono = "'IBM Plex Mono', monospace";
 const BG = "#0f1117";
 const TREE_COLOR = "#A8D8A8";
+const ANATOMY_ROOT_NOTE = "A branch of biology dealing with the structure of organisms.";
 
 const A_BRANCH_COLORS = {
   A01: "#F4B8A0",
@@ -316,7 +316,8 @@ function AnatomyBodyMap({ data }) {
     branch: "a",
     color: TREE_COLOR,
     treeNum: "A",
-    note: "Body structures and systems, with spatial branches supported by a body-map selector and non-spatial anatomy grouped nearby.",
+    ui: "D000715",
+    note: ANATOMY_ROOT_NOTE,
   };
   const zoneFill = (treeNum) => selectedRoot === treeNum || hovered === treeNum ? (A_BRANCH_COLORS[treeNum] || TREE_COLOR) + "2e" : "#ffffff0a";
   const zoneStroke = (treeNum) => selectedRoot === treeNum ? (A_BRANCH_COLORS[treeNum] || TREE_COLOR) : hovered === treeNum ? (A_BRANCH_COLORS[treeNum] || TREE_COLOR) + "99" : "#ffffff1a";
@@ -339,20 +340,15 @@ function AnatomyBodyMap({ data }) {
       <MeshPageHeader
         letter="A"
         title="Anatomy"
-        description="Body structures and systems, with spatial branches supported by a body-map selector and non-spatial anatomy grouped nearby."
+        description={ANATOMY_ROOT_NOTE}
         color={TREE_COLOR}
         onClick={() => selectRoot(null)}
         active={!selectedRoot && !selectedTag}
       />
-      <div style={{ flex: 1, overflowY: "auto", display: "grid", gridTemplateColumns: "minmax(360px, 0.9fr) minmax(440px, 1.1fr)", alignItems: "start", paddingBottom: 230, boxSizing: "border-box" }}>
-        <section style={{ borderRight: "1px solid #ffffff0d", padding: "18px 22px" }}>
-        <div style={{ fontFamily: mono, fontSize: 11, color: TREE_COLOR, letterSpacing: 3, marginBottom: 5 }}>BODY MAP</div>
-        <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff38", lineHeight: 1.55, marginBottom: 14 }}>
-          Spatial anatomy branches are placed on the figure. Non-spatial branches remain as tags below.
-        </div>
-
-        <div style={{ border: "1px solid #ffffff14", borderRadius: 8, background: "linear-gradient(180deg,#ffffff05,transparent)", padding: 10, marginBottom: 12 }}>
-          <svg viewBox="0 0 523 740" onClick={() => selectRoot(null)} style={{ display: "block", width: "100%", maxHeight: 590, margin: "0 auto", cursor: "default" }} aria-label="Anatomy body selector">
+      <MeshBottomQueryLayout selected={selectedDetail} query={queryBuilder} contentStyle={{ display: "grid", gridTemplateColumns: "minmax(360px, 0.9fr) minmax(440px, 1.1fr)", alignItems: "start", gap: 12, padding: "18px 22px 24px", boxSizing: "border-box" }}>
+        <section style={{ padding: "18px 4px 18px 8px" }}>
+        <div style={{ border: "1px solid #ffffff14", borderRadius: 8, background: "linear-gradient(180deg,#ffffff05,transparent)", padding: 10, margin: "0 auto 12px", maxWidth: 520 }}>
+          <svg viewBox="0 0 523 740" onClick={() => selectRoot(null)} style={{ display: "block", width: "100%", height: "auto", margin: "0 auto", cursor: "default" }} aria-label="Anatomy body selector">
             <path d={BODY_SILHOUETTE_PATH} fill="#ffffff14" stroke="#ffffff33" strokeWidth={1.5} />
             <path d={BODY_SILHOUETTE_PATH} fill="transparent" stroke={selectedRoot === "A17" || hovered === "A17" ? A_BRANCH_COLORS.A17 : "transparent"} strokeWidth={selectedRoot === "A17" ? 4 : 3} style={{ cursor: "pointer", pointerEvents: "stroke", transition: "stroke 0.15s" }} onClick={(event) => selectDiagramRoot(event, "A17")} onMouseEnter={() => setHovered("A17")} onMouseLeave={() => setHovered(null)} />
 
@@ -415,12 +411,10 @@ function AnatomyBodyMap({ data }) {
         </div>
         </section>
 
-        <section style={{ padding: "18px 22px" }}>
+        <section style={{ padding: "18px 8px" }}>
           {renderTopLevelOverview()}
         </section>
-      </div>
-      <FloatingMeshDetailPanel selected={selectedDetail} query={queryBuilder} />
-      <FloatingMeshQueryPanel query={queryBuilder} />
+      </MeshBottomQueryLayout>
     </div>
   );
 }
@@ -429,7 +423,7 @@ export default function MeshAConcepts() {
   const { data, loading } = useMeshTreeData("A", A_BRANCH_COLORS, TREE_COLOR);
 
   return (
-    <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: BG }}>
+    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: BG }}>
       <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
       <div style={{ flex: 1, overflow: "hidden" }}>
         {loading ? <LoadingMesh /> : <AnatomyBodyMap data={data} />}

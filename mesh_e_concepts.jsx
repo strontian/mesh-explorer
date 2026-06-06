@@ -666,13 +666,6 @@ function DepthMap({ data }) {
   );
 }
 
-// ── APP ────────────────────────────────────────────────────────────────────
-const VIEWS = [
-  { id: "pipeline", label: "1. Clinical Pipeline" },
-  { id: "grid",     label: "2. By Type Grid" },
-  { id: "depth",    label: "3. Depth Map" },
-];
-
 export default function MeshEConcepts() {
   return (
     <OverviewConceptShell

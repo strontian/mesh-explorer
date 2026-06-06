@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import {
-  FloatingMeshDetailPanel,
-  FloatingMeshQueryPanel,
+  MeshBottomQueryLayout,
   usePersistentMeshQueries,
 } from "./mesh_query_ui.jsx";
 import { MeshPageHeader } from "./mesh_page_header.jsx";
@@ -336,8 +335,7 @@ function ScaleOfObservation({ data }) {
   } : null;
 
   return (
-    <div style={{ height: "100%", overflow: "hidden" }}>
-      <div style={{ height: "100%", padding: "24px 24px 230px", boxSizing: "border-box", overflowY: "auto", display: "flex", flexDirection: "column", gap: 0 }}>
+    <MeshBottomQueryLayout selected={selectedDetail} query={queryBuilder} contentStyle={{ padding: "24px 24px", boxSizing: "border-box", display: "flex", flexDirection: "column", gap: 0 }}>
         {SCALE_GROUPS.map((group, gi) => {
           const groupBranches = branches.filter(b => group.branches.includes(b.treeNum));
           return (
@@ -452,10 +450,7 @@ function ScaleOfObservation({ data }) {
             )}
           </div>
         )}
-      </div>
-      <FloatingMeshDetailPanel selected={selectedDetail} query={queryBuilder} />
-      <FloatingMeshQueryPanel query={queryBuilder} />
-    </div>
+    </MeshBottomQueryLayout>
   );
 }
 
@@ -728,18 +723,11 @@ function ProcessFlow({ data }) {
   );
 }
 
-// ── APP ────────────────────────────────────────────────────────────────────
-const VIEWS = [
-  { id: "scale",   label: "1. Scale of Observation" },
-  { id: "bars",    label: "2. Branch Size Bars" },
-  { id: "process", label: "3. Process Flow" },
-];
-
 export default function MeshGConcepts() {
   const { data, loading } = useGData();
 
   return (
-    <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: BG }}>
+    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: BG }}>
       <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
 
       <MeshPageHeader

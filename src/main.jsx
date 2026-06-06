@@ -58,6 +58,7 @@ const NAV_BOTTOM = {
 
 const LETTER_CHIP = (active, color) => ({
   padding: "5px 9px",
+  boxSizing: "border-box",
   fontFamily: MONO,
   fontSize: 10,
   fontWeight: 700,
@@ -71,6 +72,8 @@ const LETTER_CHIP = (active, color) => ({
   display: "flex",
   alignItems: "center",
   gap: 5,
+  flex: "0 0 auto",
+  whiteSpace: "nowrap",
 });
 
 function App() {
@@ -81,6 +84,7 @@ function App() {
   const treeActive = (id) => active.kind === "concept" && active.id === id;
 
   useEffect(() => {
+    const openSearch = () => setSearchOpen(true);
     const handler = event => {
       const target = event.target;
       const typing = target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
@@ -93,8 +97,12 @@ function App() {
         setSearchOpen(true);
       }
     };
+    window.addEventListener("mesh-open-search", openSearch);
     window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    return () => {
+      window.removeEventListener("mesh-open-search", openSearch);
+      window.removeEventListener("keydown", handler);
+    };
   }, []);
 
   function navigateSearchResult(result) {
@@ -103,7 +111,7 @@ function App() {
   }
 
   return (
-    <>
+    <div style={{ height:"100vh", display:"flex", flexDirection:"column", overflow:"hidden", background:NAV_BG }}>
       <nav style={NAV_BOTTOM}>
         <button
           onClick={() => setActive({ kind: "top", id: "meshtrees" })}
@@ -140,37 +148,28 @@ function App() {
             <span style={{ fontWeight: 400, fontSize: 9, opacity: treeActive(t.id) ? 1 : 0.7 }}>{t.label}</span>
           </button>
         ))}
-        <button
-          onClick={() => setSearchOpen(true)}
-          style={{ marginLeft:"auto", padding:"5px 10px", fontFamily:MONO, fontSize:9, color:"#ffffff55", background:"#ffffff08", border:"1px solid #ffffff16", borderRadius:4, cursor:"pointer" }}
-        >
-          Search <span style={{ color:"#ffffff28" }}>⌘K</span>
-        </button>
       </nav>
 
-      {active.kind === "top" && active.id === "meshtrees" && (
-        <MeshCosmos
-          onNamedGroups={() => setActive({ kind: "concept", id: "m" })}
-          onPsychology={() => setActive({ kind: "concept", id: "f" })}
-          onGeography={() => setActive({ kind: "concept", id: "z" })}
-          onPublications={() => setActive({ kind: "concept", id: "v" })}
-          onDiseases={() => setActive({ kind: "concept", id: "c" })}
-          onChemicals={() => setActive({ kind: "concept", id: "d" })}
-        />
-      )}
-      {active.kind === "concept" && (() => {
-        const tree = CONCEPT_TREES.find((t) => t.id === active.id);
-        if (!tree) return null;
-        const Comp = tree.Comp;
-        return <Comp />;
-      })()}
+      <main style={{ flex:1, minHeight:0, overflow:"hidden" }}>
+        {active.kind === "top" && active.id === "meshtrees" && (
+          <MeshCosmos
+            onTreeSelect={(id) => setActive({ kind: "concept", id })}
+          />
+        )}
+        {active.kind === "concept" && (() => {
+          const tree = CONCEPT_TREES.find((t) => t.id === active.id);
+          if (!tree) return null;
+          const Comp = tree.Comp;
+          return <Comp />;
+        })()}
+      </main>
       <GlobalMeshSearchOverlay
         open={searchOpen}
         onClose={() => setSearchOpen(false)}
         onNavigate={navigateSearchResult}
         queryBuilder={queryBuilder}
       />
-    </>
+    </div>
   );
 }
 createRoot(document.getElementById("root")).render(

@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import {
-  FloatingMeshDetailPanel,
-  FloatingMeshQueryPanel,
+  MeshBottomQueryLayout,
   usePersistentMeshQueries,
 } from "./mesh_query_ui.jsx";
 import { MeshPageHeader } from "./mesh_page_header.jsx";
@@ -558,8 +557,7 @@ function PsychologyOverview({ data }) {
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <div style={{ flex: 1, overflow: "hidden" }}>
-        <div style={{ height: "100%", padding: "22px 22px 230px", boxSizing: "border-box", overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
+      <MeshBottomQueryLayout selected={selectedDetail} query={queryBuilder} contentStyle={{ padding: "22px 22px", boxSizing: "border-box", display: "flex", flexDirection: "column", gap: 12 }}>
           {LAYERS.map((layer, idx) => {
             const branch = byId.get(layer.treeNum);
             const children = getChildren(layer.treeNum);
@@ -630,10 +628,7 @@ function PsychologyOverview({ data }) {
               </div>
             );
 	          })}
-	      </div>
-      </div>
-      <FloatingMeshDetailPanel selected={selectedDetail} query={queryBuilder} />
-      <FloatingMeshQueryPanel query={queryBuilder} />
+      </MeshBottomQueryLayout>
     </div>
   );
 }
@@ -642,7 +637,7 @@ export default function MeshFConcepts() {
   const { data, loading } = useFData();
 
   return (
-    <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: BG }}>
+    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: BG }}>
       <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
 
       <MeshPageHeader

@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import {
-  FloatingMeshDetailPanel,
-  FloatingMeshQueryPanel,
+  MeshBottomQueryLayout,
   usePersistentMeshQueries,
 } from "./mesh_query_ui.jsx";
 import { MeshPageHeader } from "./mesh_page_header.jsx";
@@ -435,7 +434,7 @@ function BodyMap({ data }) {
         color={TREE_COLOR}
       />
 
-      <div style={{ flex:1, display:"grid", gridTemplateColumns:"minmax(390px, 0.95fr) minmax(420px, 1.05fr)", alignItems:"start", overflowY:"auto", paddingBottom:230, boxSizing:"border-box" }}>
+      <MeshBottomQueryLayout selected={selectedDetail} query={queryBuilder} contentStyle={{ display:"grid", gridTemplateColumns:"minmax(390px, 0.95fr) minmax(420px, 1.05fr)", alignItems:"start", boxSizing:"border-box" }}>
         <div style={{ borderRight:"1px solid #ffffff0a", display:"flex", flexDirection:"column", padding:"18px 22px", gap:14 }}>
           <div style={{ border:"1px solid #ffffff14", borderRadius:8, background:"linear-gradient(180deg,#ffffff05,transparent)", padding:"12px 8px 10px" }}>
             <svg viewBox="0 0 523 740" onClick={() => selectNavigation({type:"overview"})} style={{ display:"block", width:"100%", maxHeight:590, margin:"0 auto", cursor:"default" }} aria-label="Disease body region selector">
@@ -526,9 +525,7 @@ function BodyMap({ data }) {
         <div style={{ minWidth:0 }}>
           {renderPanel()}
         </div>
-      </div>
-      <FloatingMeshDetailPanel selected={selectedDetail} query={queryBuilder} />
-      <FloatingMeshQueryPanel query={queryBuilder} />
+      </MeshBottomQueryLayout>
     </div>
   );
 }
@@ -537,7 +534,7 @@ export default function MeshCConcepts() {
   const { data, loading } = useCData();
 
   return (
-    <div style={{ width: "100%", height: "100vh", background: BG }}>
+    <div style={{ width: "100%", height: "100%", background: BG }}>
       <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
       {loading ? <Loading /> : <BodyMap data={data} />}
     </div>

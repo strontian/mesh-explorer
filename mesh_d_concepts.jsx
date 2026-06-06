@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { MeshPageHeader } from "./mesh_page_header.jsx";
 import {
-  FloatingMeshDetailPanel,
-  FloatingMeshQueryPanel,
+  MeshInspectorQueryDock,
   usePersistentMeshQueries,
 } from "./mesh_query_ui.jsx";
 
@@ -1139,12 +1138,6 @@ function TreeSwitcher({ data, selectorMode = "tree" }) {
     for (const { term, treeNum } of kids) nodeByPath.set(treeNum, term);
   }
 
-  function parentOf(path) {
-    if (!path || path === "D") return null;
-    const dot = path.lastIndexOf(".");
-    return dot === -1 ? "D" : path.slice(0, dot);
-  }
-
   function lineage(path) {
     if (!path || path === "D") return [{ treeNum: "D", name: "Chemicals and Drugs" }];
     const parts = path.split(".");
@@ -1179,16 +1172,6 @@ function TreeSwitcher({ data, selectorMode = "tree" }) {
     treeNum: "D",
     note: "Chemical descriptors can appear in multiple hierarchies by structure, biological role, pharmacologic use, or action.",
   };
-  const selectedParentPath = parentOf(selectedPath);
-  const selectedChildren = (childrenMap.get(selectedPath) || []).sort((a, b) =>
-    a.term.name.localeCompare(b.term.name)
-  );
-  const selectedSiblings = selectedParentPath ? (childrenMap.get(selectedParentPath) || []).sort((a, b) =>
-    a.term.name.localeCompare(b.term.name)
-  ) : [];
-  const selectedPlacements = selectedTerm
-    ? selectedTerm.treeNums.filter(n => n.startsWith("D")).sort()
-    : [];
   const navigationPlacements = currentTerm
     ? currentTerm.treeNums.filter(n => n.startsWith("D")).sort()
     : [];
@@ -1700,7 +1683,8 @@ function TreeSwitcher({ data, selectorMode = "tree" }) {
   }
 
   return (
-    <div style={{ background: BG, height: "100%", overflow: "hidden", display: "grid", gridTemplateColumns: selectorMode === "tags" ? "minmax(430px, 1fr) 430px" : "330px minmax(430px, 1fr)", gridTemplateRows: "auto minmax(0, 1fr)" }}>
+    <div style={{ background: BG, height: "100%", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+    <div style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "grid", gridTemplateColumns: selectorMode === "tags" ? "430px minmax(430px, 1fr)" : "330px minmax(430px, 1fr)", gridTemplateRows: "auto minmax(0, 1fr)" }}>
       <section style={{ gridColumn: "1 / -1", borderBottom: "1px solid #ffffff0d", padding: "12px 16px 10px", fontFamily: mono }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ flex: 1, display: "flex", alignItems: "center", background: "#ffffff0a", border: `1px solid ${q.length >= 2 ? TREE_COLOR + "77" : "#ffffff18"}`, borderRadius: 5, padding: "0 9px" }}>
@@ -1732,7 +1716,7 @@ function TreeSwitcher({ data, selectorMode = "tree" }) {
           </div>
         )}
       </section>
-      <aside style={{ gridColumn: selectorMode === "tags" ? 2 : 1, gridRow: 2, borderRight: selectorMode === "tags" ? "none" : "1px solid #ffffff0d", borderLeft: selectorMode === "tags" ? "1px solid #ffffff0d" : "none", padding: "16px 14px 22px", overflowY: "auto" }}>
+      <aside style={{ gridColumn: 1, gridRow: 2, borderRight: "1px solid #ffffff0d", padding: "16px 14px 22px", overflowY: "auto" }}>
         <div style={{ fontFamily: mono, fontSize: 11, color: TREE_COLOR, letterSpacing: 3, marginBottom: 5 }}>
           {selectorMode === "tags" ? "HIERARCHY TAG SELECTOR" : "TREE SWITCHER"}
         </div>
@@ -1753,36 +1737,7 @@ function TreeSwitcher({ data, selectorMode = "tree" }) {
         )}
       </aside>
 
-      <main style={{ gridColumn: selectorMode === "tags" ? 1 : 2, gridRow: 2, overflowY: "auto", padding: "18px 22px 24px", paddingBottom: selectorMode === "tags" ? 230 : 24 }}>
-        {selectorMode !== "tags" && (
-          <section style={{ background: "#ffffff06", border: "1px solid #ffffff10", borderRadius: 7, padding: "14px 15px", marginBottom: 14, fontFamily: mono, height: 142, minHeight: 142, maxHeight: 142, boxSizing: "border-box", overflow: "hidden" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 14, alignItems: "start" }}>
-              <div>
-                <div style={{ fontSize: 7, color: "#ffffff25", letterSpacing: 2, marginBottom: 6 }}>SELECTED NODE</div>
-                <div style={{ fontSize: 15, color: "#fff", lineHeight: 1.3 }}>{selectedTerm?.name || "Chemicals and Drugs"}</div>
-                <div style={{ fontSize: 8, color: selectedColor, marginTop: 5 }}>{selectedPath}</div>
-              </div>
-              <div style={{ display: "flex", gap: 7, flexShrink: 0 }}>
-                {[
-                  ["children", selectedChildren.length],
-                  ["siblings", selectedSiblings.length],
-                  ["placements", selectedPlacements.length || 1],
-                ].map(([label, value]) => (
-                  <div key={label} style={{ minWidth: 68, padding: "7px 8px", background: "#00000022", border: "1px solid #ffffff0d", borderRadius: 5, textAlign: "center" }}>
-                    <div style={{ fontSize: 12, color: TREE_COLOR }}>{value}</div>
-                    <div style={{ fontSize: 7, color: "#ffffff33", marginTop: 2 }}>{label}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            {selectedTerm?.note && (
-              <div style={{ fontSize: 8.2, color: "#ffffff62", lineHeight: 1.55, marginTop: 11, maxWidth: 760, maxHeight: 54, overflowY: "auto" }}>
-                {selectedTerm.note}
-              </div>
-            )}
-          </section>
-        )}
-
+      <main style={{ gridColumn: 2, gridRow: 2, overflowY: "auto", padding: "18px 22px 24px" }}>
         <section style={{ marginBottom: 14 }}>
           <div style={{ fontFamily: mono, fontSize: 7, color: "#ffffff25", letterSpacing: 2, marginBottom: 8 }}>PLACEMENT GRAPH · TOP TO BOTTOM</div>
           <div style={{ background: "#ffffff04", border: "1px solid #ffffff0d", borderRadius: 7, padding: "10px 11px" }}>
@@ -1790,12 +1745,10 @@ function TreeSwitcher({ data, selectorMode = "tree" }) {
           </div>
         </section>
       </main>
-      {selectorMode === "tags" && (
-        <>
-          <FloatingMeshDetailPanel selected={selectedDetail} query={queryBuilder} />
-          <FloatingMeshQueryPanel query={queryBuilder} />
-        </>
-      )}
+      </div>
+      <div style={{ flexShrink: 0, padding: 0, background: "linear-gradient(180deg,rgba(15,17,23,0),#0f1117 30%)", boxShadow: "0 -18px 34px rgba(0,0,0,0.34)" }}>
+        <MeshInspectorQueryDock selected={selectedDetail} query={queryBuilder} layout="bottom" />
+      </div>
     </div>
   );
 }
@@ -1804,6 +1757,7 @@ function CategoryDagSwitcher({ data }) {
   const { branches, childrenMap, allDTerms } = data;
   const [currentPath, setCurrentPath] = useState("D");
   const [query, setQuery] = useState("");
+  const queryBuilder = usePersistentMeshQueries();
 
   const nodeByPath = new Map();
   for (const branch of branches) nodeByPath.set(branch.treeNum, branch.term);
@@ -1828,28 +1782,27 @@ function CategoryDagSwitcher({ data }) {
     return nodes;
   }
 
-  function countDescendants(path) {
-    let n = 0;
-    const queue = [...(childrenMap.get(path) || [])];
-    while (queue.length) {
-      const item = queue.shift();
-      n += 1;
-      queue.push(...(childrenMap.get(item.treeNum) || []));
-    }
-    return n;
-  }
-
   const currentTerm = nodeByPath.get(currentPath);
   const currentTitle = currentTerm?.name || "Chemicals and Drugs";
   const currentDescription = currentTerm?.note || "The top-level MeSH category for chemical substances, drugs, biological molecules, materials, mixtures, and functional chemical actions or uses. Its branches mix structural identity, biochemical class, material form, pharmaceutical preparation, and D27 action/use categories.";
   const currentColor = currentPath === "D" ? TREE_COLOR : chemColor(currentPath.slice(0, 3));
+  const selectedDetail = currentTerm ? {
+    id: currentTerm.name,
+    branch: "d",
+    color: currentColor,
+    treeNum: currentPath,
+    ui: currentTerm.ui,
+    note: currentTerm.note || currentTerm.scopeNote,
+  } : {
+    id: "Chemicals and Drugs",
+    branch: "d",
+    color: TREE_COLOR,
+    treeNum: "D",
+    note: currentDescription,
+  };
   const children = (childrenMap.get(currentPath) || []).sort((a, b) =>
     a.term.name.localeCompare(b.term.name)
   );
-  const parentPath = parentOf(currentPath);
-  const siblings = parentPath ? (childrenMap.get(parentPath) || []).sort((a, b) =>
-    a.term.name.localeCompare(b.term.name)
-  ) : [];
   const q = query.trim().toLowerCase();
   const searchResults = q.length >= 2
     ? allDTerms.filter(t => t.name.toLowerCase().includes(q)).slice(0, 36)
@@ -2092,8 +2045,8 @@ function CategoryDagSwitcher({ data }) {
   }
 
   return (
-    <div style={{ background: BG, height: "100%", overflowY: "auto" }}>
-      <main style={{ overflowY: "auto", padding: "18px 22px 24px" }}>
+    <div style={{ background: BG, height: "100%", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+      <main style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "18px 22px 24px" }}>
         <div style={{ fontFamily: mono, fontSize: 11, color: TREE_COLOR, letterSpacing: 3, marginBottom: 5 }}>CATEGORY DAG</div>
         <div style={{ fontFamily: mono, fontSize: 8, color: "#ffffff38", lineHeight: 1.55, marginBottom: 14 }}>
           Use the graph to move through the hierarchy. Search can jump to a descriptor placement.
@@ -2129,30 +2082,6 @@ function CategoryDagSwitcher({ data }) {
           )}
         </section>
 
-        <section style={{ background: "#ffffff06", border: "1px solid #ffffff10", borderRadius: 7, padding: "14px 15px", marginBottom: 14, fontFamily: mono, height: 142, minHeight: 142, maxHeight: 142, boxSizing: "border-box", overflow: "hidden" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 14, alignItems: "start" }}>
-            <div>
-              <div style={{ fontSize: 15, color: "#fff", lineHeight: 1.3 }}>{currentTitle}</div>
-              <div style={{ fontSize: 8, color: currentColor, marginTop: 5 }}>{currentPath}</div>
-            </div>
-            <div style={{ display: "flex", gap: 7, flexShrink: 0 }}>
-              {[
-                ["children", children.length],
-                ["siblings", siblings.length],
-                ["descendants", countDescendants(currentPath)],
-              ].map(([label, value]) => (
-                <div key={label} style={{ minWidth: 74, padding: "7px 8px", background: "#00000022", border: "1px solid #ffffff0d", borderRadius: 5, textAlign: "center" }}>
-                  <div style={{ fontSize: 12, color: currentColor }}>{value}</div>
-                  <div style={{ fontSize: 7, color: "#ffffff33", marginTop: 2 }}>{label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div style={{ fontSize: 8.2, color: "#ffffff62", lineHeight: 1.55, marginTop: 11, maxWidth: 760, maxHeight: 54, overflowY: "auto" }}>
-            {currentDescription}
-          </div>
-        </section>
-
         <section style={{ marginBottom: 14 }}>
           <div style={{ fontFamily: mono, fontSize: 7, color: "#ffffff25", letterSpacing: 2, marginBottom: 8 }}>CHILD CATEGORY DAG · TOP TO BOTTOM</div>
           <div style={{ background: "#ffffff04", border: "1px solid #ffffff0d", borderRadius: 7, padding: "10px 11px" }}>
@@ -2164,8 +2093,10 @@ function CategoryDagSwitcher({ data }) {
             )}
           </div>
         </section>
-
       </main>
+      <div style={{ flexShrink: 0, padding: 0, background: "linear-gradient(180deg,rgba(15,17,23,0),#0f1117 30%)", boxShadow: "0 -18px 34px rgba(0,0,0,0.34)" }}>
+        <MeshInspectorQueryDock selected={selectedDetail} query={queryBuilder} layout="bottom" />
+      </div>
     </div>
   );
 }
@@ -2180,7 +2111,7 @@ export default function MeshDConcepts() {
   ];
 
   return (
-    <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: BG }}>
+    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: BG }}>
       <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
 
       <MeshPageHeader

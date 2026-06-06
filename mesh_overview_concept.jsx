@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  FloatingMeshDetailPanel,
-  FloatingMeshQueryPanel,
   MeshInspectorQueryDock,
   usePersistentMeshQueries,
 } from "./mesh_query_ui.jsx";
@@ -87,7 +85,6 @@ export function OverviewDetailExplorer({
   pageDescription,
   treeColor,
   defaultCluster,
-  inspectorLayout = "floating",
 }) {
   const { branches, childrenMap, countDescendants } = data;
   const queryBuilder = usePersistentMeshQueries();
@@ -187,44 +184,6 @@ export function OverviewDetailExplorer({
     note:activeEntry.term.note || activeEntry.term.scopeNote,
   } : null;
 
-  function renderDetail() {
-    const activeTreeNum = selectedTag || selectedLayer || branches[0]?.treeNum;
-    const entry = treeIndex.get(activeTreeNum);
-    const color = activeTreeNum ? rootColor(activeTreeNum) : treeColor;
-    if (!entry) return null;
-    const childCount = getChildren(activeTreeNum).length;
-    const descendants = countDescendants(activeTreeNum);
-    const note = entry.term.note || entry.term.scopeNote;
-
-    return (
-      <aside style={{
-        padding: 16,
-        background: "#ffffff06",
-        border: `1px solid ${color}36`,
-        borderRadius: 8,
-        height: "fit-content",
-        position: "sticky",
-        top: 18,
-      }}>
-        <div style={{ fontFamily: mono, fontSize: 7, color: color + "aa", letterSpacing: 1.6, marginBottom: 8 }}>
-          SELECTED TERM
-        </div>
-        <div style={{ fontFamily: mono, fontSize: 18, color: "#ffffffee", fontWeight: 700, lineHeight: 1.2 }}>
-          {entry.term.name}
-        </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12, fontFamily: mono, fontSize: 8, color: "#ffffff50" }}>
-          <span>{activeTreeNum}</span>
-          <span>{entry.term.ui}</span>
-          <span>{childCount === 0 ? "leaf" : `${childCount} children`}</span>
-          {descendants > 0 && <span>{descendants.toLocaleString()} narrower</span>}
-        </div>
-        <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #ffffff10", fontFamily: mono, fontSize: 9.5, color: "#ffffff82", lineHeight: 1.6 }}>
-          {note || "No scope note available for this term."}
-        </div>
-      </aside>
-    );
-  }
-
   function renderTags(parentTreeNum, color, depth = 0) {
     const children = getChildren(parentTreeNum);
     if (children.length === 0) {
@@ -290,25 +249,23 @@ export function OverviewDetailExplorer({
     );
   }
 
-  const dockedInspector = inspectorLayout === "rightDock";
-
   return (
-    <div style={{ height: "100%", overflowY: "auto", padding: 24, paddingTop: 0, paddingBottom: dockedInspector ? 24 : 230 }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: 24, paddingTop: 0, paddingBottom: 24 }}>
       <div style={{ margin: "0 -24px 20px" }}>
-        <MeshPageHeader
-          letter={treeLetter}
-          title={treeTitleFromNavLabel(navLabel)}
-          description={pageDescription || sentenceFromEyebrow(eyebrow)}
-          color={treeColor}
-          onClick={selectRoot}
-          active={selectedTag === treeLetter}
-        />
-      </div>
-
+          <MeshPageHeader
+            letter={treeLetter}
+            title={treeTitleFromNavLabel(navLabel)}
+            description={pageDescription || sentenceFromEyebrow(eyebrow)}
+            color={treeColor}
+            onClick={selectRoot}
+            active={selectedTag === treeLetter}
+          />
+        </div>
       <div style={{
         display: "grid",
-        gridTemplateColumns: dockedInspector ? "minmax(420px, 1fr) 340px" : "minmax(420px, 1fr)",
-        gap: dockedInspector ? 18 : 16,
+        gridTemplateColumns: "minmax(420px, 1fr)",
+        gap: 16,
         alignItems: "start",
       }}>
         <main style={{ display: "grid", gap: 14 }}>
@@ -390,17 +347,12 @@ export function OverviewDetailExplorer({
             );
           })}
         </main>
-        {dockedInspector && (
-          <MeshInspectorQueryDock selected={selectedDetail} query={queryBuilder} />
-        )}
+      </div>
       </div>
 
-      {!dockedInspector && (
-        <>
-          <FloatingMeshDetailPanel selected={selectedDetail} query={queryBuilder} />
-          <FloatingMeshQueryPanel query={queryBuilder} />
-        </>
-      )}
+      <div style={{ flexShrink: 0, padding: 0, background: "linear-gradient(180deg,rgba(15,17,23,0),#0f1117 30%)", boxShadow: "0 -18px 34px rgba(0,0,0,0.34)" }}>
+        <MeshInspectorQueryDock selected={selectedDetail} query={queryBuilder} layout="bottom" />
+      </div>
     </div>
   );
 }
@@ -414,12 +366,11 @@ export function OverviewConceptShell({
   treeColor,
   branchColors,
   defaultCluster,
-  inspectorLayout,
 }) {
   const { data, loading } = useMeshTreeData(treeLetter, branchColors, treeColor);
 
   return (
-    <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: BG }}>
+    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: BG }}>
       <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
 
       <div style={{ flex: 1, overflow: "hidden" }}>
@@ -433,7 +384,6 @@ export function OverviewConceptShell({
             pageDescription={pageDescription}
             treeColor={treeColor}
             defaultCluster={defaultCluster}
-            inspectorLayout={inspectorLayout}
           />
         )}
       </div>
