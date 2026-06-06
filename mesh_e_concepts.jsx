@@ -666,7 +666,7 @@ function DepthMap({ data }) {
   );
 }
 
-export default function MeshEConcepts() {
+export default function MeshEConcepts({ initialSelection } = {}) {
   return (
     <OverviewConceptShell
       treeLetter="E"
@@ -685,6 +685,7 @@ export default function MeshEConcepts() {
         E07: "#FFD180",
       }}
       defaultCluster="E05"
+      initialSelection={initialSelection}
     />
   );
 }

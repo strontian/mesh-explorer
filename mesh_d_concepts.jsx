@@ -95,7 +95,7 @@ function ChemicalsPageChrome() {
   );
 }
 
-function ChemicalsTagSelectorDag({ data, pageChrome }) {
+function ChemicalsTagSelectorDag({ data, pageChrome, initialSelection }) {
   const { branches, childrenMap, allDTerms } = data;
   const [currentPath, setCurrentPath] = useState("D");
   const [selectedPath, setSelectedPath] = useState("D");
@@ -123,6 +123,11 @@ function ChemicalsTagSelectorDag({ data, pageChrome }) {
     setCurrentPath(path);
     setSelectedPath(path);
   }
+
+  useEffect(() => {
+    const path = initialSelection?.treeNum;
+    if (path?.startsWith("D")) navigateTo(path);
+  }, [initialSelection?.treeNum]);
 
   const currentTerm = nodeByPath.get(currentPath);
   const currentLineage = lineage(currentPath);
@@ -498,7 +503,7 @@ function ChemicalsTagSelectorDag({ data, pageChrome }) {
   );
 }
 
-export default function MeshDConcepts() {
+export default function MeshDConcepts({ initialSelection } = {}) {
   const { data, loading } = useDData();
   const pageChrome = <ChemicalsPageChrome />;
 
@@ -507,7 +512,7 @@ export default function MeshDConcepts() {
       <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
 
       <div style={{ flex: 1, overflow: "hidden" }}>
-        {loading ? <Loading /> : <ChemicalsTagSelectorDag data={data} pageChrome={pageChrome} />}
+        {loading ? <Loading /> : <ChemicalsTagSelectorDag data={data} pageChrome={pageChrome} initialSelection={initialSelection} />}
       </div>
     </div>
   );

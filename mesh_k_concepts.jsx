@@ -504,7 +504,7 @@ function BranchCards({ data }) {
   );
 }
 
-export default function MeshKConcepts() {
+export default function MeshKConcepts({ initialSelection } = {}) {
   return (
     <OverviewConceptShell
       treeLetter="K"
@@ -513,6 +513,7 @@ export default function MeshKConcepts() {
       treeColor={TREE_COLOR}
       branchColors={{ K01: TREE_COLOR }}
       defaultCluster="K01.752"
+      initialSelection={initialSelection}
     />
   );
 }

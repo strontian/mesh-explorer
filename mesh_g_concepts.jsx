@@ -117,7 +117,7 @@ function Loading() {
 // Left: scale level labels. Right: branch chips at their level.
 // Color from cool (physics) to warm (biological).
 // ═══════════════════════════════════════════════════════════════════════════
-function ScaleOfObservation({ data }) {
+function ScaleOfObservation({ data, initialSelection }) {
   const [selected, setSelected] = useState(null);
   const [selectedTag, setSelectedTag] = useState(null);
   const [expandedNodes, setExpandedNodes] = useState([]);
@@ -235,6 +235,23 @@ function ScaleOfObservation({ data }) {
       </>
     );
   }
+
+  function ancestorsFor(treeNum) {
+    const parts = treeNum.split(".");
+    const ancestors = [];
+    for (let i = 1; i <= parts.length; i++) ancestors.push(parts.slice(0, i).join("."));
+    return ancestors;
+  }
+
+  useEffect(() => {
+    const treeNum = initialSelection?.treeNum;
+    if (!treeNum?.startsWith("G") || !treeIndex.has(treeNum)) return;
+    const ancestors = ancestorsFor(treeNum);
+    const root = branches.find(branch => treeNum === branch.treeNum || treeNum.startsWith(branch.treeNum + "."))?.treeNum;
+    setSelected(root || treeNum);
+    setSelectedTag(treeNum);
+    setExpandedNodes(ancestors.slice(1));
+  }, [initialSelection?.treeNum]);
 
   function renderSelectedDetail(color) {
     const activeTreeNum = selectedTag || selected;
@@ -729,7 +746,7 @@ function ProcessFlow({ data }) {
   );
 }
 
-export default function MeshGConcepts() {
+export default function MeshGConcepts({ initialSelection } = {}) {
   const { data, loading } = useGData();
 
   return (
@@ -744,7 +761,7 @@ export default function MeshGConcepts() {
       />
 
       <div style={{ flex: 1, overflow: "hidden" }}>
-        {loading ? <Loading /> : <ScaleOfObservation data={data} />}
+        {loading ? <Loading /> : <ScaleOfObservation data={data} initialSelection={initialSelection} />}
       </div>
     </div>
   );

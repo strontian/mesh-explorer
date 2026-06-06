@@ -923,7 +923,7 @@ function PopBreakdown({ data }) {
   );
 }
 
-export default function MeshNConcepts() {
+export default function MeshNConcepts({ initialSelection } = {}) {
   return (
     <OverviewConceptShell
       treeLetter="N"
@@ -939,6 +939,7 @@ export default function MeshNConcepts() {
         N06: "#C8EAD6",
       }}
       defaultCluster="N02"
+      initialSelection={initialSelection}
     />
   );
 }

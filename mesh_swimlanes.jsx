@@ -569,7 +569,7 @@ function useMeshTermLookup() {
 }
 
 // ── MAIN ───────────────────────────────────────────────────────────────────
-export default function SwimLanes() {
+export default function SwimLanes({ initialSelection } = {}) {
   const [ageHovered, setAgeHovered]         = useState(null);
   const [occHovered, setOccHovered]         = useState(null);
   const [personsHovered, setPersonsHovered] = useState(null);
@@ -591,6 +591,22 @@ export default function SwimLanes() {
     setSelected({ id:node.id, branch:"occ" });
     setOccExpanded(() => new Set(hasChildren ? [...path, node.id] : path));
   }, []);
+
+  useEffect(() => {
+    if (initialSelection?.tree !== "M" || !initialSelection.name) return;
+    const name = initialSelection.name;
+    if (AGE_TERMS.some(term => term.id === name)) {
+      setSelected({ id:name, branch:"age" });
+      return;
+    }
+    if (OCC_TERMS.some(term => term.id === name)) {
+      setSelected({ id:name, branch:"occ" });
+      return;
+    }
+    if (ALL_PERSON_TERMS.some(term => term.term === name) || name === "Persons") {
+      setSelected({ id:name, branch:"persons" });
+    }
+  }, [initialSelection?.name, initialSelection?.tree]);
 
   // Cross-lane highlights
   const ageToPersons  = ageHovered     ? getRelations(ageHovered,     "age")     : null;

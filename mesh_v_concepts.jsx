@@ -99,12 +99,17 @@ function Loading() {
 // ═══════════════════════════════════════════════════════════════════════════
 // ALL TERMS — filterable chip list grouped by branch
 // ═══════════════════════════════════════════════════════════════════════════
-function AllTermsV({ data }) {
+function AllTermsV({ data, initialSelection }) {
   const { allTerms, branches } = data;
   const [filter, setFilter] = useState("");
   const [hovered, setHovered] = useState(null);
   const [selected, setSelected] = useState("V");
   const queryBuilder = usePersistentMeshQueries();
+
+  useEffect(() => {
+    const treeNum = initialSelection?.treeNum;
+    if (treeNum?.startsWith("V")) setSelected(treeNum);
+  }, [initialSelection?.treeNum]);
 
   const filtered = allTerms.filter(t =>
     !filter || t.term.name.toLowerCase().includes(filter.toLowerCase())
@@ -248,13 +253,13 @@ function AllTermsV({ data }) {
   );
 }
 
-export default function MeshVConcepts() {
+export default function MeshVConcepts({ initialSelection } = {}) {
   const { data, loading } = useVData();
 
   return (
     <div style={{ width: "100%", height: "100%", background: BG }}>
       <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
-      {loading ? <Loading /> : <AllTermsV data={data} />}
+      {loading ? <Loading /> : <AllTermsV data={data} initialSelection={initialSelection} />}
     </div>
   );
 }

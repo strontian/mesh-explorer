@@ -494,6 +494,7 @@ export function GlobalMeshSearchOverlay({ open, onClose, onNavigate, queryBuilde
                   return (
                     <div
                       key={`${result.ui}-${result.treeNum}`}
+                      onClick={() => { onNavigate?.(result); onClose(); }}
                       style={{ display:"flex", alignItems:"center", gap:10, padding:"7px 16px 7px 28px", cursor:"pointer", position:"relative" }}
                       onMouseEnter={event => { event.currentTarget.style.background = "#ffffff0a"; event.currentTarget.querySelector(".acts").style.opacity = 1; }}
                       onMouseLeave={event => { event.currentTarget.style.background = "transparent"; event.currentTarget.querySelector(".acts").style.opacity = 0; }}
@@ -507,8 +508,16 @@ export function GlobalMeshSearchOverlay({ open, onClose, onNavigate, queryBuilde
                         </div>
                       </div>
                       <div className="acts" style={{ display:"flex", gap:5, flexShrink:0, opacity:0, transition:"opacity 0.1s" }}>
-                        <button onClick={() => { onNavigate?.(result); onClose(); }} style={{ padding:"3px 9px", fontFamily:mono, fontSize:8, background:"#ffffff0e", border:"1px solid #ffffff22", borderRadius:3, color:"#ccc", cursor:"pointer" }}>navigate</button>
-                        <button onClick={() => queryBuilder.add({ id:result.name, branch:tree.toLowerCase(), color:meta.color, treeNum:result.treeNum, ui:result.ui, note })} style={{ padding:"3px 9px", fontFamily:mono, fontSize:8, fontWeight:700, background:meta.color + "22", border:`1px solid ${meta.color}55`, borderRadius:3, color:meta.color, cursor:"pointer" }}>+ query</button>
+                        <button
+                          onClick={event => {
+                            event.stopPropagation();
+                            queryBuilder.add({ id:result.name, branch:tree.toLowerCase(), color:meta.color, treeNum:result.treeNum, ui:result.ui, note });
+                            onClose();
+                          }}
+                          style={{ padding:"5px 12px", fontFamily:mono, fontSize:9, fontWeight:800, background:meta.color + "22", border:`1px solid ${meta.color}66`, borderRadius:4, color:meta.color, cursor:"pointer" }}
+                        >
+                          + query
+                        </button>
                       </div>
                     </div>
                   );

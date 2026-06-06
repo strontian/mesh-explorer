@@ -85,6 +85,7 @@ export function OverviewDetailExplorer({
   pageDescription,
   treeColor,
   defaultCluster,
+  initialSelection,
 }) {
   const { branches, childrenMap, countDescendants } = data;
   const queryBuilder = usePersistentMeshQueries();
@@ -165,6 +166,25 @@ export function OverviewDetailExplorer({
     setSelectedTag(treeNum);
     if (getChildren(treeNum).length > 0) toggleExpanded(treeNum);
   }
+
+  function pathAncestors(treeNum) {
+    const parts = treeNum.split(".");
+    const ancestors = [];
+    for (let i = 1; i <= parts.length; i++) ancestors.push(parts.slice(0, i).join("."));
+    return ancestors;
+  }
+
+  useEffect(() => {
+    const treeNum = initialSelection?.treeNum;
+    if (!treeNum || treeNum[0] !== treeLetter || !treeIndex.has(treeNum)) return;
+
+    const ancestors = pathAncestors(treeNum);
+    const branchTreeNum = ancestors[0];
+    const clusterTreeNum = ancestors.find((ancestor, index) => index > 0 && treeIndex.has(ancestor)) || branchTreeNum;
+    setSelectedLayer(clusterTreeNum);
+    setSelectedTag(treeNum);
+    setExpandedNodes(ancestors.slice(1));
+  }, [initialSelection?.treeNum, treeLetter]);
 
   const activeTreeNum = selectedTag || selectedLayer || branches[0]?.treeNum;
   const activeEntry = activeTreeNum ? treeIndex.get(activeTreeNum) : null;
@@ -366,6 +386,7 @@ export function OverviewConceptShell({
   treeColor,
   branchColors,
   defaultCluster,
+  initialSelection,
 }) {
   const { data, loading } = useMeshTreeData(treeLetter, branchColors, treeColor);
 
@@ -384,6 +405,7 @@ export function OverviewConceptShell({
             pageDescription={pageDescription}
             treeColor={treeColor}
             defaultCluster={defaultCluster}
+            initialSelection={initialSelection}
           />
         )}
       </div>

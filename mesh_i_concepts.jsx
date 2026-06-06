@@ -365,7 +365,7 @@ function SocialSciences({ data }) {
   );
 }
 
-export default function MeshIConcepts() {
+export default function MeshIConcepts({ initialSelection } = {}) {
   return (
     <OverviewConceptShell
       treeLetter="I"
@@ -374,6 +374,7 @@ export default function MeshIConcepts() {
       treeColor={TREE_COLOR}
       branchColors={BRANCH_COLORS}
       defaultCluster="I01.076"
+      initialSelection={initialSelection}
     />
   );
 }

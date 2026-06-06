@@ -107,7 +107,7 @@ function App() {
 
   function navigateSearchResult(result) {
     const tree = CONCEPT_TREES.find(item => item.letter === result.tree);
-    if (tree) setActive({ kind:"concept", id:tree.id });
+    if (tree) setActive({ kind:"concept", id:tree.id, selection:result });
   }
 
   return (
@@ -160,7 +160,7 @@ function App() {
           const tree = CONCEPT_TREES.find((t) => t.id === active.id);
           if (!tree) return null;
           const Comp = tree.Comp;
-          return <Comp />;
+          return <Comp initialSelection={active.selection} />;
         })()}
       </main>
       <GlobalMeshSearchOverlay

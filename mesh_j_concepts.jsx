@@ -362,7 +362,7 @@ function J01Breakdown({ data }) {
   );
 }
 
-export default function MeshJConcepts() {
+export default function MeshJConcepts({ initialSelection } = {}) {
   return (
     <OverviewConceptShell
       treeLetter="J"
@@ -371,6 +371,7 @@ export default function MeshJConcepts() {
       treeColor={TREE_COLOR}
       branchColors={BRANCH_COLORS}
       defaultCluster="J01.040"
+      initialSelection={initialSelection}
     />
   );
 }

@@ -629,7 +629,7 @@ function TermBrowser({ data }) {
   );
 }
 
-export default function MeshLConcepts() {
+export default function MeshLConcepts({ initialSelection } = {}) {
   return (
     <OverviewConceptShell
       treeLetter="L"
@@ -638,6 +638,7 @@ export default function MeshLConcepts() {
       treeColor={TREE_COLOR}
       branchColors={{ L01: TREE_COLOR }}
       defaultCluster="L01.462"
+      initialSelection={initialSelection}
     />
   );
 }

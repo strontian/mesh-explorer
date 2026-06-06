@@ -743,7 +743,7 @@ function SizeDepthScatter({ data }) {
   );
 }
 
-export default function MeshBConcepts() {
+export default function MeshBConcepts({ initialSelection } = {}) {
   return (
     <OverviewConceptShell
       treeLetter="B"
@@ -757,6 +757,7 @@ export default function MeshBConcepts() {
         B04: "#C8C8E8",
       }}
       defaultCluster="B01"
+      initialSelection={initialSelection}
     />
   );
 }
