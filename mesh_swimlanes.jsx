@@ -580,6 +580,7 @@ export default function SwimLanes() {
   const selectedMeshTerm = selected ? termByName.get(selected.id) : null;
   const selectedDetail = selected ? {
     ...selected,
+    id:selected.id === "M" ? "Named Groups" : selected.id,
     color:BRANCH_COLOR[selected.branch],
     note:selectedMeshTerm?.note || SCOPE_NOTES[selected.id],
     treeNum:selectedMeshTerm?.treeNums?.find(treeNum => treeNum.startsWith("M")) || TREE_NUM[selected.id],

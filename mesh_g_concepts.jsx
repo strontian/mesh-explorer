@@ -332,7 +332,13 @@ function ScaleOfObservation({ data }) {
     treeNum: activeTreeNum,
     ui: activeEntry.term.ui,
     note: activeEntry.term.note || activeEntry.term.scopeNote,
-  } : null;
+  } : {
+    id: "Phenomena and Processes",
+    branch: "g",
+    color: TREE_COLOR,
+    treeNum: "G",
+    note: "Phenomena and processes are arranged across physical, chemical, cellular, organ-system, and organism-level scales.",
+  };
 
   return (
     <MeshBottomQueryLayout selected={selectedDetail} query={queryBuilder} contentStyle={{ padding: "24px 24px", boxSizing: "border-box", display: "flex", flexDirection: "column", gap: 0 }}>
