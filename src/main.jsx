@@ -79,11 +79,14 @@ const LETTER_CHIP = (active, color) => ({
 function App() {
   const [active, setActive] = useState({ kind: "top", id: "meshtrees" });
   const [searchOpen, setSearchOpen] = useState(false);
+  const [mobile, setMobile] = useState(false);
   const queryBuilder = usePersistentMeshQueries();
 
   const treeActive = (id) => active.kind === "concept" && active.id === id;
 
   useEffect(() => {
+    const updateMobile = () => setMobile(window.innerWidth < 700);
+    updateMobile();
     const openSearch = () => setSearchOpen(true);
     const handler = event => {
       const target = event.target;
@@ -99,9 +102,11 @@ function App() {
     };
     window.addEventListener("mesh-open-search", openSearch);
     window.addEventListener("keydown", handler);
+    window.addEventListener("resize", updateMobile);
     return () => {
       window.removeEventListener("mesh-open-search", openSearch);
       window.removeEventListener("keydown", handler);
+      window.removeEventListener("resize", updateMobile);
     };
   }, []);
 
@@ -112,7 +117,15 @@ function App() {
 
   return (
     <div style={{ height:"100vh", display:"flex", flexDirection:"column", overflow:"hidden", background:NAV_BG }}>
-      <nav style={NAV_BOTTOM}>
+      <nav style={{
+        ...NAV_BOTTOM,
+        flexWrap:mobile ? "nowrap" : "wrap",
+        overflowX:mobile ? "auto" : "visible",
+        overflowY:"hidden",
+        padding:mobile ? "7px 10px" : NAV_BOTTOM.padding,
+        gap:mobile ? 5 : NAV_BOTTOM.gap,
+        flexShrink:0,
+      }}>
         <button
           onClick={() => setActive({ kind: "top", id: "meshtrees" })}
           title="Tiled overview"
@@ -120,10 +133,10 @@ function App() {
             display:"flex",
             alignItems:"center",
             gap:7,
-            marginRight:8,
-            padding:"5px 10px 5px 0",
+            marginRight:mobile ? 3 : 8,
+            padding:mobile ? "5px 8px 5px 0" : "5px 10px 5px 0",
             fontFamily:MONO,
-            fontSize:11,
+            fontSize:mobile ? 10 : 11,
             fontWeight:700,
             letterSpacing:0.4,
             color:"#e8e8e8",
@@ -132,6 +145,7 @@ function App() {
             borderRight:"1px solid #ffffff16",
             cursor:"pointer",
             whiteSpace:"nowrap",
+            flex:"0 0 auto",
           }}
         >
           <span style={{ width:7, height:7, borderRadius:2, background:"#AED6F1", boxShadow:"0 0 10px #AED6F166" }} />
@@ -140,12 +154,15 @@ function App() {
         {CONCEPT_TREES.map((t) => (
           <button
             key={t.id}
-            style={LETTER_CHIP(treeActive(t.id), t.color)}
+            style={{
+              ...LETTER_CHIP(treeActive(t.id), t.color),
+              padding:mobile ? "5px 8px" : LETTER_CHIP(treeActive(t.id), t.color).padding,
+            }}
             onClick={() => setActive({ kind: "concept", id: t.id })}
             title={t.label}
           >
             <span>{t.letter}</span>
-            <span style={{ fontWeight: 400, fontSize: 9, opacity: treeActive(t.id) ? 1 : 0.7 }}>{t.label}</span>
+            {!mobile && <span style={{ fontWeight: 400, fontSize: 9, opacity: treeActive(t.id) ? 1 : 0.7 }}>{t.label}</span>}
           </button>
         ))}
       </nav>

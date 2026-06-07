@@ -409,10 +409,20 @@ function PersonsLane({ hovered, onHover, relatedHighlight, selected, onSelect, c
 // ── HEADER ─────────────────────────────────────────────────────────────────
 function Header({ selected, onSelect }) {
   const active = selected?.id === "M";
+  const [mobile, setMobile] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const update = () => setMobile(window.innerWidth < 700);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
   return (
     <button type="button" onClick={() => onSelect({ id:"M", branch:"persons" })} style={{
       width:"100%",
-      padding:"18px 24px 16px",
+      padding:mobile ? "10px 14px 9px" : "18px 24px 16px",
       border:"none",
       borderBottom:`1px solid ${active ? "#AED6F155" : "#ffffff0e"}`,
       flexShrink:0,
@@ -421,14 +431,14 @@ function Header({ selected, onSelect }) {
       cursor:"pointer",
       outline:"none",
     }}>
-      <div style={{ display:"flex", alignItems:"center", gap:11 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:mobile ? 8 : 11 }}>
         <div style={{
-          width:34,
-          height:34,
+          width:mobile ? 28 : 34,
+          height:mobile ? 28 : 34,
           display:"grid",
           placeItems:"center",
           fontFamily:mono,
-          fontSize:16,
+          fontSize:mobile ? 13 : 16,
           color:"#AED6F1",
           letterSpacing:1,
           fontWeight:700,
@@ -441,11 +451,11 @@ function Header({ selected, onSelect }) {
         }}>
           M
         </div>
-        <div style={{ fontFamily:mono, fontSize:22, color:"#e8e8e8", fontWeight:700, letterSpacing:0.2 }}>
+        <div style={{ fontFamily:mono, fontSize:mobile ? 17 : 22, color:"#e8e8e8", fontWeight:700, letterSpacing:0.2 }}>
           Named Groups
         </div>
       </div>
-      <div style={{
+      {!mobile && <div style={{
         fontFamily:mono,
         fontSize:10,
         color:"#ffffff62",
@@ -456,18 +466,28 @@ function Header({ selected, onSelect }) {
       }}>
         Terms for named human groups and populations, organized by age, occupation,
         health status, social role, and life circumstance.
-      </div>
+      </div>}
     </button>
   );
 }
 
 function RootBar({ selected, onSelect, personNote }) {
   const active = selected?.id === "Persons";
+  const [mobile, setMobile] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const update = () => setMobile(window.innerWidth < 700);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
   return (
     <button type="button" onClick={() => onSelect({ id:"Persons", branch:"persons" })} style={{
       flexShrink:0,
       width:"100%",
-      padding:"8px 24px",
+      padding:mobile ? "6px 14px" : "8px 24px",
       border:"none",
       borderBottom:"1px solid #ffffff0e",
       background:"linear-gradient(90deg,#AED6F10d,transparent 70%)",
@@ -482,9 +502,9 @@ function RootBar({ selected, onSelect, personNote }) {
     }}>
       <span style={{ fontSize:9, color:"#AED6F1" }}>M01</span>
       <span style={{ fontSize:10, color:"#e8e8e8", fontWeight:700 }}>Persons</span>
-      <span style={{ fontSize:8, color:"#ffffff48", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+      {!mobile && <span style={{ fontSize:8, color:"#ffffff48", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
         {personNote}
-      </span>
+      </span>}
     </button>
   );
 }
