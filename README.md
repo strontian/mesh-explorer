@@ -5,7 +5,7 @@ National Library of Medicine's MeSH taxonomy.
 
 Live demo: https://mesh-explorer.pages.dev
 
-![MeSH Tree Explorer preview](docs/mesh-explorer-preview.svg)
+![MeSH Tree Explorer screenshot](docs/mesh-explorer-screenshot.png)
 
 ## What This Is
 
