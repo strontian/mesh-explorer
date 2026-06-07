@@ -435,7 +435,10 @@ export function GlobalMeshSearchOverlay({ open, onClose, onNavigate, queryBuilde
   }, []);
 
   useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 0);
+    if (open) {
+      setQuery("");
+      setTimeout(() => inputRef.current?.focus(), 0);
+    }
   }, [open]);
 
   if (!open) return null;
@@ -455,7 +458,10 @@ export function GlobalMeshSearchOverlay({ open, onClose, onNavigate, queryBuilde
   for (const result of results) {
     (grouped[result.tree] ||= []).push(result);
   }
-  const treeOrder = Object.keys(grouped).sort((a, b) => grouped[b].length - grouped[a].length || a.localeCompare(b));
+  const bestScore = tree => Math.max(...grouped[tree].map(result => result.score));
+  const treeOrder = Object.keys(grouped).sort((a, b) =>
+    bestScore(b) - bestScore(a) || grouped[b].length - grouped[a].length || a.localeCompare(b)
+  );
 
   return (
     <div onClick={onClose} style={{ position:"fixed", inset:0, background:"rgba(5,7,10,0.8)", display:"flex", alignItems:"flex-start", justifyContent:"center", paddingTop:"10vh", zIndex:1000, animation:"fadeIn 0.12s ease", backdropFilter:"blur(2px)" }}>
