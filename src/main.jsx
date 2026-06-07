@@ -165,11 +165,11 @@ function App() {
               const base = LETTER_CHIP(treeActive(t.id), t.color);
               return {
                 ...base,
-                justifyContent:"center",
+                justifyContent:mobile ? "center" : base.justifyContent,
                 padding:mobile ? 0 : base.padding,
                 height:mobile ? 27 : "auto",
-                minWidth:0,
-                width:"100%",
+                minWidth:mobile ? 0 : undefined,
+                width:mobile ? "100%" : undefined,
               };
             })()}
             onClick={() => setActive({ kind: "concept", id: t.id })}
