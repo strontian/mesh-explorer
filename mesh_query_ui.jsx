@@ -424,7 +424,7 @@ export function MeshInspectorQueryDock({ selected, query, layout = "side" }) {
 export function MeshBottomQueryLayout({ children, selected, query, contentStyle = {} }) {
   return (
     <div style={{ height:"100%", display:"flex", flexDirection:"column", overflow:"hidden" }}>
-      <div style={{ flex:1, minHeight:0, overflowY:"auto", ...contentStyle }}>
+      <div data-mesh-scroll-root="true" style={{ flex:1, minHeight:0, overflowY:"auto", ...contentStyle }}>
         {children}
       </div>
       <div style={{ flexShrink:0, padding:0, background:"linear-gradient(180deg,rgba(15,17,23,0),#0f1117 30%)", boxShadow:"0 -18px 34px rgba(0,0,0,0.34)" }}>

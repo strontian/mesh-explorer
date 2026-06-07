@@ -364,7 +364,7 @@ function OccNode({ node, depth, path, expanded, onSelectNode, hovered, onHover, 
 // ── PERSONS CLUSTER LANE ───────────────────────────────────────────────────
 function PersonsLane({ hovered, onHover, relatedHighlight, selected, onSelect, collectedIds }) {
   return (
-    <div style={{ flex:1, overflowY:"auto", padding:"10px 12px" }}>
+    <div style={{ padding:"10px 12px" }}>
       {PERSONS_CLUSTERS.map(cluster => (
         <div key={cluster.cluster} style={{ marginBottom:14 }}>
           <div style={{
@@ -407,6 +407,13 @@ function PersonsLane({ hovered, onHover, relatedHighlight, selected, onSelect, c
 }
 
 // ── HEADER ─────────────────────────────────────────────────────────────────
+function forwardWheelToPageScroll(event) {
+  const scrollRoot = document.querySelector("[data-mesh-scroll-root='true']");
+  if (!scrollRoot || scrollRoot.scrollHeight <= scrollRoot.clientHeight + 1) return;
+  scrollRoot.scrollTop += event.deltaY;
+  event.preventDefault();
+}
+
 function Header({ selected, onSelect }) {
   const active = selected?.id === "M";
   const [mobile, setMobile] = useState(false);
@@ -420,7 +427,7 @@ function Header({ selected, onSelect }) {
   }, []);
 
   return (
-    <button type="button" onClick={() => onSelect({ id:"M", branch:"persons" })} style={{
+    <button type="button" onClick={() => onSelect({ id:"M", branch:"persons" })} onWheel={forwardWheelToPageScroll} style={{
       width:"100%",
       padding:mobile ? "10px 14px 9px" : "18px 24px 16px",
       border:"none",
@@ -484,7 +491,7 @@ function RootBar({ selected, onSelect, personNote }) {
   }, []);
 
   return (
-    <button type="button" onClick={() => onSelect({ id:"Persons", branch:"persons" })} style={{
+    <button type="button" onClick={() => onSelect({ id:"Persons", branch:"persons" })} onWheel={forwardWheelToPageScroll} style={{
       flexShrink:0,
       width:"100%",
       padding:mobile ? "6px 14px" : "8px 24px",
@@ -685,18 +692,19 @@ export default function SwimLanes({ initialSelection } = {}) {
 
       {/* Lanes */}
       <div style={{
-        flex:1, display:"grid",
+        display:"grid",
         gridTemplateColumns:"1fr 1fr 1.4fr",
-        overflow:"hidden",
+        overflow:"visible",
         position:"relative",
+        alignItems:"start",
       }}>
 
         {/* ── LANE 1: Age Groups ── */}
         <div style={{
-          display:"flex", flexDirection:"column", overflow:"hidden",
+          display:"flex", flexDirection:"column", overflow:"visible",
           borderRight:"1px solid #ffffff0a"
         }}>
-          <div style={{ flex:1, overflowY:"auto", padding:"14px 16px 14px 0" }}>
+          <div style={{ padding:"14px 16px 14px 0" }}>
             <AgeAxis/>
             {AGE_GROUPS.map(term => (
               <AgeBar
@@ -726,10 +734,10 @@ export default function SwimLanes({ initialSelection } = {}) {
 
         {/* ── LANE 2: Occupational Groups ── */}
         <div style={{
-          display:"flex", flexDirection:"column", overflow:"hidden",
+          display:"flex", flexDirection:"column", overflow:"visible",
           borderRight:"1px solid #ffffff0a"
         }}>
-          <div style={{ flex:1, overflowY:"auto", padding:"10px 0" }}>
+          <div style={{ padding:"10px 0" }}>
             {OCC_TREE.map(node => (
               <OccNode
                 key={node.id}
@@ -757,7 +765,7 @@ export default function SwimLanes({ initialSelection } = {}) {
         </div>
 
         {/* ── LANE 3: Persons (other) ── */}
-        <div style={{ display:"flex", flexDirection:"column", overflow:"hidden" }}>
+        <div style={{ display:"flex", flexDirection:"column", overflow:"visible" }}>
           <PersonsLane
             hovered={personsHovered}
             onHover={setPersonsHovered}

@@ -2,6 +2,13 @@ import { useEffect, useState } from "react";
 
 const mono = "'IBM Plex Mono', monospace";
 
+function forwardWheelToPageScroll(event) {
+  const scrollRoot = document.querySelector("[data-mesh-scroll-root='true']");
+  if (!scrollRoot || scrollRoot.scrollHeight <= scrollRoot.clientHeight + 1) return;
+  scrollRoot.scrollTop += event.deltaY;
+  event.preventDefault();
+}
+
 export function MeshPageHeader({
   letter,
   title,
@@ -26,6 +33,7 @@ export function MeshPageHeader({
     <Wrapper
       type={onClick ? "button" : undefined}
       onClick={onClick}
+      onWheel={forwardWheelToPageScroll}
       style={{
         width: "100%",
         padding: mobile ? "10px 14px 9px" : "18px 24px 16px",

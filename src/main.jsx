@@ -1,4 +1,4 @@
-import { StrictMode, useEffect, useState } from "react";
+import { StrictMode, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import MeshCosmos from "../mesh_cosmos.jsx";
 import SwimLanes from "../mesh_swimlanes.jsx";
@@ -76,10 +76,29 @@ const LETTER_CHIP = (active, color) => ({
   whiteSpace: "nowrap",
 });
 
+function forwardWheelToScrollRoot(event, root) {
+  const candidates = [
+    document.querySelector("[data-mesh-scroll-root='true']"),
+    root,
+    ...(root ? Array.from(root.querySelectorAll("*")) : []),
+  ].filter(Boolean);
+
+  const target = candidates.find(element => {
+    const style = window.getComputedStyle(element);
+    const canScroll = /(auto|scroll)/.test(style.overflowY);
+    return canScroll && element.scrollHeight > element.clientHeight + 1;
+  });
+
+  if (!target) return;
+  target.scrollTop += event.deltaY;
+  event.preventDefault();
+}
+
 function App() {
   const [active, setActive] = useState({ kind: "top", id: "meshtrees" });
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobile, setMobile] = useState(false);
+  const mainRef = useRef(null);
   const queryBuilder = usePersistentMeshQueries();
 
   const treeActive = (id) => active.kind === "concept" && active.id === id;
@@ -128,7 +147,7 @@ function App() {
         padding:mobile ? "6px 7px" : NAV_BOTTOM.padding,
         gap:mobile ? 3 : NAV_BOTTOM.gap,
         flexShrink:0,
-      }}>
+      }} onWheel={event => forwardWheelToScrollRoot(event, mainRef.current)}>
         <button
           onClick={() => setActive({ kind: "top", id: "meshtrees" })}
           title="Tiled overview"
@@ -181,7 +200,7 @@ function App() {
         ))}
       </nav>
 
-      <main style={{ flex:1, minHeight:0, overflow:"hidden" }}>
+      <main ref={mainRef} style={{ flex:1, minHeight:0, overflow:"hidden" }}>
         {active.kind === "top" && active.id === "meshtrees" && (
           <MeshCosmos
             onTreeSelect={(id) => setActive({ kind: "concept", id })}
