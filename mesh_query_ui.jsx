@@ -195,12 +195,14 @@ export function usePersistentMeshQueries() {
 export function MeshInspectorQueryDock({ selected, query, layout = "side" }) {
   const [editing, setEditing] = useState(false);
   const [open, setOpen] = useState(false);
+  const [narrow, setNarrow] = useState(false);
   const inputRef = useRef(null);
   const menuRef = useRef(null);
   const color = selected?.color || DEFAULT_BRANCH_COLOR[selected?.branch] || "#ffffff";
   const alreadyIn = selected && query.inActive.has(selected.id);
   const pubMedUrl = query.active ? buildPubMedUrl(query.active.terms) : null;
   const bottom = layout === "bottom";
+  const compactBottom = bottom && narrow;
 
   function openGlobalSearch() {
     if (typeof window !== "undefined") window.dispatchEvent(new Event("mesh-open-search"));
@@ -219,13 +221,21 @@ export function MeshInspectorQueryDock({ selected, query, layout = "side" }) {
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const update = () => setNarrow(window.innerWidth < 760);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
   return (
     <aside style={{
       position:bottom ? "relative" : "sticky",
       top:bottom ? "auto" : 18,
       alignSelf:bottom ? "stretch" : "start",
-      maxHeight:bottom ? "none" : "calc(100vh - 170px)",
-      overflowY:bottom ? "visible" : "auto",
+      maxHeight:compactBottom ? "58vh" : bottom ? "none" : "calc(100vh - 170px)",
+      overflowY:compactBottom ? "auto" : bottom ? "visible" : "auto",
       background:"#13161d",
       border:"1px solid #ffffff18",
       borderRadius:10,
@@ -233,8 +243,19 @@ export function MeshInspectorQueryDock({ selected, query, layout = "side" }) {
       fontFamily:mono,
     }}>
       <div style={{ height:3, background:`linear-gradient(90deg,${color}cc,${color}22,#ffffff0a)` }} />
-      <div style={{ display:bottom ? "grid" : "block", gridTemplateColumns:bottom ? "minmax(360px, 0.78fr) minmax(520px, 1fr) 132px" : undefined }}>
-      <section style={{ padding:bottom ? "16px 18px 15px" : "14px 15px 13px", borderBottom:bottom ? "none" : "1px solid #ffffff0d", borderRight:bottom ? "1px solid #ffffff0d" : "none", minHeight:bottom ? 174 : 248, boxSizing:"border-box", display:"flex", flexDirection:"column" }}>
+      <div style={{
+        display:bottom ? compactBottom ? "block" : "grid" : "block",
+        gridTemplateColumns:bottom && !compactBottom ? "minmax(360px, 0.78fr) minmax(520px, 1fr) 132px" : undefined,
+      }}>
+      <section style={{
+        padding:compactBottom ? "13px 14px 12px" : bottom ? "16px 18px 15px" : "14px 15px 13px",
+        borderBottom:bottom ? compactBottom ? "1px solid #ffffff0d" : "none" : "1px solid #ffffff0d",
+        borderRight:bottom && !compactBottom ? "1px solid #ffffff0d" : "none",
+        minHeight:compactBottom ? "auto" : bottom ? 174 : 248,
+        boxSizing:"border-box",
+        display:"flex",
+        flexDirection:"column",
+      }}>
         <div style={{ fontSize:7.5, color:color + "aa", letterSpacing:1.6, fontWeight:700, marginBottom:8 }}>
           SELECTED TERM
         </div>
@@ -246,7 +267,7 @@ export function MeshInspectorQueryDock({ selected, query, layout = "side" }) {
             <div style={{ fontSize:8, color:color, marginBottom:10 }}>
               {selected.treeNum || selected.ui || "MeSH"}
             </div>
-            <div style={{ fontSize:9, color:"#ffffff9c", lineHeight:1.65, height:bottom ? 58 : 98, overflowY:"auto", paddingRight:4, marginBottom:12 }}>
+            <div style={{ fontSize:9, color:"#ffffff9c", lineHeight:1.65, height:compactBottom ? 42 : bottom ? 58 : 98, overflowY:"auto", paddingRight:4, marginBottom:12 }}>
               {selected.note || <span style={{ color:"#ffffff2a", fontStyle:"italic" }}>No scope note on record.</span>}
             </div>
             {!query.active ? (
@@ -270,7 +291,14 @@ export function MeshInspectorQueryDock({ selected, query, layout = "side" }) {
         )}
       </section>
 
-      <section style={{ padding:bottom ? "16px 18px 15px" : "13px 15px 15px", minHeight:bottom ? 174 : undefined, boxSizing:"border-box", display:"flex", flexDirection:"column" }}>
+      <section style={{
+        padding:compactBottom ? "12px 14px" : bottom ? "16px 18px 15px" : "13px 15px 15px",
+        minHeight:compactBottom ? "auto" : bottom ? 174 : undefined,
+        boxSizing:"border-box",
+        display:"flex",
+        flexDirection:"column",
+        borderBottom:compactBottom ? "1px solid #ffffff0d" : "none",
+      }}>
         {!query.active ? (
           <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:"auto" }}>
             <button onClick={query.createEmpty} style={{ flex:1, padding:"8px 10px", fontFamily:mono, fontSize:8.5, fontWeight:800, background:"#ffffff0c", border:"1px dashed #ffffff30", borderRadius:5, color:"#ffffff86", cursor:"pointer" }}>
@@ -323,7 +351,7 @@ export function MeshInspectorQueryDock({ selected, query, layout = "side" }) {
                 no terms yet - select a term and add it above
               </div>
             ) : (
-              <div style={{ display:"flex", flexWrap:"wrap", gap:bottom ? 6 : 5, maxHeight:bottom ? 54 : 138, overflowY:"auto", paddingRight:2 }}>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:bottom ? 6 : 5, maxHeight:compactBottom ? 68 : bottom ? 54 : 138, overflowY:"auto", paddingRight:2 }}>
                 {query.active.terms.map(term => {
                   const termColor = term.color || DEFAULT_BRANCH_COLOR[term.branch] || "#aaa";
                   return (
@@ -363,19 +391,21 @@ export function MeshInspectorQueryDock({ selected, query, layout = "side" }) {
             margin:0,
             padding:0,
             border:"none",
-            borderLeft:"1px solid #ffffff0d",
+            borderLeft:compactBottom ? "none" : "1px solid #ffffff0d",
+            borderTop:compactBottom ? "1px solid #ffffff0d" : "none",
             background:"#ffffff06",
             color:"#ffffff86",
             cursor:"pointer",
             fontFamily:mono,
-            minHeight:174,
+            minHeight:compactBottom ? 46 : 174,
+            width:compactBottom ? "100%" : "auto",
             display:"grid",
             placeItems:"center",
           }}
         >
-          <span style={{ display:"grid", gap:7, justifyItems:"center" }}>
+          <span style={{ display:"grid", gap:compactBottom ? 3 : 7, justifyItems:"center" }}>
             <span style={{ padding:"8px 10px", minWidth:48, border:"1px solid #ffffff24", borderRadius:7, background:"#ffffff0b", color:"#ffffffc0", fontSize:13, fontWeight:900, lineHeight:1, boxShadow:"inset 0 -1px 0 #00000055" }}>⌘K</span>
-            <span style={{ fontSize:8.5, fontWeight:800 }}>Search</span>
+            <span style={{ fontSize:8.5, fontWeight:800 }}>{compactBottom ? "Search all trees" : "Search"}</span>
           </span>
         </button>
       )}
