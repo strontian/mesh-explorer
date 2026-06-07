@@ -109,7 +109,7 @@ function AllTermsV({ data, initialSelection }) {
   useEffect(() => {
     const treeNum = initialSelection?.treeNum;
     if (treeNum?.startsWith("V")) setSelected(treeNum);
-  }, [initialSelection?.treeNum]);
+  }, [initialSelection?.navigationKey, initialSelection?.treeNum]);
 
   const filtered = allTerms.filter(t =>
     !filter || t.term.name.toLowerCase().includes(filter.toLowerCase())

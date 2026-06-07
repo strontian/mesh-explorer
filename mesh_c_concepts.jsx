@@ -217,7 +217,7 @@ function BodyMap({ data, initialSelection }) {
     setSel(nextSel);
     setSelectedTag(treeNum);
     setExpandedNodes(ancestorsFor(treeNum).slice(1));
-  }, [initialSelection?.treeNum]);
+  }, [initialSelection?.navigationKey, initialSelection?.treeNum]);
 
   function selectDiagramRegion(event, id) {
     event.stopPropagation();

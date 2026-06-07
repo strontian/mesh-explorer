@@ -127,7 +127,7 @@ function ChemicalsTagSelectorDag({ data, pageChrome, initialSelection }) {
   useEffect(() => {
     const path = initialSelection?.treeNum;
     if (path?.startsWith("D")) navigateTo(path);
-  }, [initialSelection?.treeNum]);
+  }, [initialSelection?.navigationKey, initialSelection?.treeNum]);
 
   const currentTerm = nodeByPath.get(currentPath);
   const currentLineage = lineage(currentPath);

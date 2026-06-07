@@ -107,7 +107,7 @@ function App() {
 
   function navigateSearchResult(result) {
     const tree = CONCEPT_TREES.find(item => item.letter === result.tree);
-    if (tree) setActive({ kind:"concept", id:tree.id, selection:result });
+    if (tree) setActive({ kind:"concept", id:tree.id, selection:{ ...result, navigationKey:Date.now() } });
   }
 
   return (

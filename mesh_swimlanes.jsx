@@ -606,7 +606,7 @@ export default function SwimLanes({ initialSelection } = {}) {
     if (ALL_PERSON_TERMS.some(term => term.term === name) || name === "Persons") {
       setSelected({ id:name, branch:"persons" });
     }
-  }, [initialSelection?.name, initialSelection?.tree]);
+  }, [initialSelection?.navigationKey, initialSelection?.name, initialSelection?.tree]);
 
   // Cross-lane highlights
   const ageToPersons  = ageHovered     ? getRelations(ageHovered,     "age")     : null;

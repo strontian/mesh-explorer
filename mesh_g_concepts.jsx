@@ -251,7 +251,7 @@ function ScaleOfObservation({ data, initialSelection }) {
     setSelected(root || treeNum);
     setSelectedTag(treeNum);
     setExpandedNodes(ancestors.slice(1));
-  }, [initialSelection?.treeNum]);
+  }, [initialSelection?.navigationKey, initialSelection?.treeNum]);
 
   function renderSelectedDetail(color) {
     const activeTreeNum = selectedTag || selected;

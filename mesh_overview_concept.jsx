@@ -184,7 +184,7 @@ export function OverviewDetailExplorer({
     setSelectedLayer(clusterTreeNum);
     setSelectedTag(treeNum);
     setExpandedNodes(ancestors.slice(1));
-  }, [initialSelection?.treeNum, treeLetter]);
+  }, [initialSelection?.navigationKey, initialSelection?.treeNum, treeLetter]);
 
   const activeTreeNum = selectedTag || selectedLayer || branches[0]?.treeNum;
   const activeEntry = activeTreeNum ? treeIndex.get(activeTreeNum) : null;
