@@ -119,11 +119,14 @@ function App() {
     <div style={{ height:"100vh", display:"flex", flexDirection:"column", overflow:"hidden", background:NAV_BG }}>
       <nav style={{
         ...NAV_BOTTOM,
-        flexWrap:mobile ? "nowrap" : "wrap",
-        overflowX:mobile ? "auto" : "visible",
+        display:mobile ? "grid" : NAV_BOTTOM.display,
+        gridTemplateColumns:mobile ? "repeat(17, minmax(0, 1fr))" : undefined,
+        alignItems:"center",
+        flexWrap:mobile ? "unset" : "wrap",
+        overflowX:"hidden",
         overflowY:"hidden",
-        padding:mobile ? "7px 10px" : NAV_BOTTOM.padding,
-        gap:mobile ? 5 : NAV_BOTTOM.gap,
+        padding:mobile ? "6px 7px" : NAV_BOTTOM.padding,
+        gap:mobile ? 3 : NAV_BOTTOM.gap,
         flexShrink:0,
       }}>
         <button
@@ -132,32 +135,43 @@ function App() {
           style={{
             display:"flex",
             alignItems:"center",
-            gap:7,
-            marginRight:mobile ? 3 : 8,
-            padding:mobile ? "5px 8px 5px 0" : "5px 10px 5px 0",
+            justifyContent:mobile ? "center" : "flex-start",
+            gap:mobile ? 0 : 7,
+            marginRight:mobile ? 0 : 8,
+            padding:mobile ? 0 : "5px 10px 5px 0",
             fontFamily:MONO,
             fontSize:mobile ? 10 : 11,
             fontWeight:700,
             letterSpacing:0.4,
             color:"#e8e8e8",
             background:"transparent",
-            border:"none",
+            border:mobile ? "1px solid #ffffff14" : "none",
             borderRight:"1px solid #ffffff16",
+            borderRadius:mobile ? 3 : 0,
             cursor:"pointer",
             whiteSpace:"nowrap",
             flex:"0 0 auto",
+            minWidth:0,
+            height:mobile ? 27 : "auto",
           }}
         >
-          <span style={{ width:7, height:7, borderRadius:2, background:"#AED6F1", boxShadow:"0 0 10px #AED6F166" }} />
-          <span>MeSH Tree Explorer</span>
+          <span style={{ width:mobile ? 8 : 7, height:mobile ? 8 : 7, borderRadius:2, background:"#AED6F1", boxShadow:"0 0 10px #AED6F166" }} />
+          {!mobile && <span>MeSH Tree Explorer</span>}
         </button>
         {CONCEPT_TREES.map((t) => (
           <button
             key={t.id}
-            style={{
-              ...LETTER_CHIP(treeActive(t.id), t.color),
-              padding:mobile ? "5px 8px" : LETTER_CHIP(treeActive(t.id), t.color).padding,
-            }}
+            style={(() => {
+              const base = LETTER_CHIP(treeActive(t.id), t.color);
+              return {
+                ...base,
+                justifyContent:"center",
+                padding:mobile ? 0 : base.padding,
+                height:mobile ? 27 : "auto",
+                minWidth:0,
+                width:"100%",
+              };
+            })()}
             onClick={() => setActive({ kind: "concept", id: t.id })}
             title={t.label}
           >

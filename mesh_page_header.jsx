@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 const mono = "'IBM Plex Mono', monospace";
 
 export function MeshPageHeader({
@@ -9,14 +11,24 @@ export function MeshPageHeader({
   active = false,
   children,
 }) {
+  const [mobile, setMobile] = useState(false);
   const Wrapper = onClick ? "button" : "div";
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const update = () => setMobile(window.innerWidth < 700);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
   return (
     <Wrapper
       type={onClick ? "button" : undefined}
       onClick={onClick}
       style={{
         width: "100%",
-        padding: "18px 24px 16px",
+        padding: mobile ? "10px 14px 9px" : "18px 24px 16px",
         border: "none",
         borderBottom: `1px solid ${active ? color + "55" : "#ffffff0e"}`,
         flexShrink: 0,
@@ -26,14 +38,14 @@ export function MeshPageHeader({
         outline: "none",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: mobile ? 8 : 11 }}>
         <div style={{
-          width: 34,
-          height: 34,
+          width: mobile ? 28 : 34,
+          height: mobile ? 28 : 34,
           display: "grid",
           placeItems: "center",
           fontFamily: mono,
-          fontSize: 16,
+          fontSize: mobile ? 13 : 16,
           color,
           letterSpacing: 1,
           fontWeight: 700,
@@ -46,11 +58,11 @@ export function MeshPageHeader({
         }}>
           {letter}
         </div>
-        <div style={{ fontFamily: mono, fontSize: 22, color: "#e8e8e8", fontWeight: 700, letterSpacing: 0.2 }}>
+        <div style={{ fontFamily: mono, fontSize: mobile ? 17 : 22, color: "#e8e8e8", fontWeight: 700, letterSpacing: 0.2 }}>
           {title}
         </div>
       </div>
-      {description && (
+      {description && !mobile && (
         <div style={{
           fontFamily: mono,
           fontSize: 10,
