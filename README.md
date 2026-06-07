@@ -1,91 +1,117 @@
-# MeSH Explorer — Project Handoff
+# MeSH Tree Explorer
 
-## What this project is
+An interactive prototype for browsing and learning the structure of the
+National Library of Medicine's MeSH taxonomy.
 
-A data visualization and exploration tool for the **NIH National Library of Medicine MeSH (Medical Subject Headings)** taxonomy, built as a stepping stone toward a longer-form article comparing the volume and nature of biomedical research across different topics (originally motivated by dust mites vs. mold, but the tool is intentionally topic-agnostic).
+Live demo: https://mesh-explorer.pages.dev
 
-The end goal is an interactive article or tool that lets readers explore *how much* research exists on various topics in PubMed, *what* that research studies (via MeSH tag co-occurrence), and *how* that research is structured (study types, populations, time trends).
+![MeSH Tree Explorer preview](docs/mesh-explorer-preview.svg)
 
-## What we've built so far
+## What This Is
 
-### Four React components (JSX, no external dependencies beyond React + Recharts if needed)
+MeSH Tree Explorer is a Vite + React app for exploring the major MeSH trees:
+Anatomy, Organisms, Diseases, Chemicals and Drugs, Techniques, Psychology,
+Phenomena, Disciplines, Named Groups, Health Care, Publication Types,
+Geographicals, and related branches.
 
-| File | What it is | Status |
-|------|-----------|--------|
-| `mesh_cosmos.jsx` | Full 16-tree MeSH explorer with 3 zoom levels: Galaxy (all trees as cards), Planet (branches within a tree), Surface (individual terms + detail). M tree has real NLM data. | Working, good foundation |
-| `mesh_explorer.jsx` | Earlier filter-builder UI — lets you pick MeSH tags and generates a PubMed query string. Less polished, mostly superseded. | Keep for reference |
-| `mesh_m_concepts.jsx` | Five layout concept sketches for the M01 Named Groups page, switchable via tabs: Census Grid, Concentric Rings, Tag Cloud, Swim Lanes, Card Wall. | Working |
-| `mesh_swimlanes.jsx` | The polished Swim Lanes view for M01 Named Groups — the direction we decided to pursue. See details below. | Working, main deliverable |
+The current focus is not query construction first. It is helping a user
+understand the shape of the MeSH data:
 
-### The Swim Lanes pattern (our design direction)
+- how trees differ from one another
+- how terms nest into hierarchies
+- how the same descriptor can appear in multiple placements
+- how browsing patterns should adapt to each tree's structure
+- how selected terms can later become lightweight PubMed filters
 
-`mesh_swimlanes.jsx` is the most developed piece. Key design decisions:
+## Current Features
 
-- **Each lane gets a layout that matches its data's nature** — this is the core insight
-- **Lane 1 — Age Groups:** Gantt-style horizontal bars on a 0–90 year axis. All rows use CSS grid (`140px 1fr 72px`) so bars are pixel-perfectly aligned regardless of label length
-- **Lane 2 — Occupational Groups:** Expandable nested tree. Click to expand/collapse. Health Personnel → Physicians → all 31 specialties are in there with real tree numbers
-- **Lane 3 — Persons (other):** 64 terms softly clustered by theme (Family, Health Status, Social Circumstance, Lifestyle, Identity, etc.) with per-cluster colors
-- **Cross-lane relationships:** Hover a Persons term and related Age Groups highlight (and vice versa). Powered by a hand-curated `AGE_RELATIONS` map
-- **Header context strip:** Tree number, description, term counts before you dive in
-- **Status bar:** When hovering, shows the MeSH tree path or related terms
+- Tree-specific interfaces instead of one generic browser for everything.
+- Global search across representative MeSH terms.
+- Persistent query builder shared across pages.
+- PubMed links generated from selected MeSH terms.
+- Cloudflare Pages deployment.
+- Multiple visualization patterns, including:
+  - body-map browsing for Anatomy and Diseases
+  - map-based browsing for Geographicals
+  - DAG views for Chemicals and Drugs
+  - expandable tag hierarchies for broad categorical trees
+  - lane-based browsing for Named Groups
 
-### Data notes
+## Running Locally
 
-- M01 (Named Groups) has **real NLM data** pulled directly from meshb.nlm.nih.gov — all term names, tree numbers, and hierarchy are accurate
-- The other 15 trees in `mesh_cosmos.jsx` have **curated/approximated data** — structure is real but term lists are representative subsets, not complete
-- Tree numbers format: `M01.526.485.810.020` = Persons > Occupational Groups > Health Personnel > Physicians > Allergists
+Install dependencies:
 
-## What comes next
+```bash
+npm install
+```
 
-### Immediate next steps
-1. **Build custom lane layouts for the remaining high-priority trees** — suggested order:
-   - **C (Diseases)** — wide, not deep; good candidate for a treemap or grouped card view
-   - **E (Techniques/Study Design)** — flat enough for a simple categorical view; important for the article's "what kind of research" angle
-   - **B (Organisms)** — very deep biological taxonomy; the drill-down / zoom metaphor works well here
-   - **D (Chemicals & Drugs)** — enormous; needs search-first rather than browse-first
+Start the dev server:
 
-2. **Plug in real MeSH data via the NLM API**
-   - MeSH data is freely downloadable in XML/RDF from nlm.nih.gov
-   - The E-utilities API can also return MeSH terms for any PubMed search
-   - No API key needed for low-volume use; free key available at ncbi.nlm.nih.gov/account/ for higher volume (10 req/sec vs 3)
+```bash
+npm run dev
+```
 
-3. **PubMed integration** — a working script already exists (from an earlier Claude Code session) that:
-   - Queries PubMed E-utilities API
-   - Returns publication counts for any search term
-   - Breaks counts down by decade
-   - Compares two terms side by side (e.g. "dust mites" vs "mold allergy")
-   - Found: dust mites ~10,300 papers, mold allergy ~13,667 — mold has ~1.3x more
-   - Interesting historical finding: dust mite research barely existed in the 1960s (19 papers) vs mold (492)
+Build for production:
 
-4. **MeSH co-occurrence analysis** — next big analytical goal:
-   - Use EFetch to pull MeSH tags from a large set of PubMed papers
-   - Count which tags co-occur most frequently with a given term
-   - This answers "what are researchers studying dust mites *against*?"
-   - Needs: ESearch (get PMIDs) → EFetch (get full records with MeSH) → parse tags
+```bash
+npm run build
+```
 
-## Design principles established
+The production build is written to `dist/`.
 
-- **Dark theme** (`#0f1117` background, `#e8e8e8` primary text, colored accents per tree)
-- **Font:** JetBrains Mono throughout (monospace feels right for a taxonomy/data tool)
-- **Each tree has a color:** B=`#81B29A`, C=`#F2CC8F`/`#F4A261`, D=`#9B72CF`, E=`#4ECDC4`, M=`#AED6F1`, etc.
-- **No dust-mite-specific UI** — the explorer is topic-agnostic; the article layer comes later
-- **Exploration over query-building** — the primary UX goal is learning and discovery, not constructing search strings
+## Deploying
 
-## Key facts about MeSH (for context)
+This project is currently deployed to Cloudflare Pages by direct upload:
 
-- 30,764 main headings as of 2024, updated annually by NLM
-- 16 top-level trees (A–Z with gaps): Anatomy, Organisms, Diseases, Chemicals, Techniques, Psychology, Phenomena, Disciplines, Sociology, Technology, Humanities, Information Science, Named Groups, Health Care, Publication Types, Geographicals
-- Tags are assigned by trained NLM indexers (not authors) after publication
-- The asterisk (*) on a tag = "major topic" — the paper is *primarily* about this concept
-- Tree numbers encode the full path: each dot-separated segment = one level deeper
-- "Explosion" = searching a broad term automatically includes all child terms
-- MeSH is used by PubMed, ClinicalTrials.gov, Cochrane, WHO IRIS, and many institutional libraries
-- Data is freely available, US government, essentially public domain (abstracts may have journal copyright)
+```bash
+npm run build
+npx wrangler pages deploy dist --project-name mesh-explorer --branch main
+```
 
-## PubMed API notes
+The Cloudflare Pages project is `mesh-explorer`.
 
-- Base URL: `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/`
-- Key endpoints: `esearch.fcgi` (counts + IDs), `efetch.fcgi` (full records), `elink.fcgi` (related records), `egquery.fcgi` (cross-database counts)
-- Rate limit: 3 req/sec without key, 10/sec with (free key)
-- EFetch can return MeSH tags, abstracts, authors, journal, date for any PMID
-- Max 10,000 records per ESearch query; use date-range batching for larger sets
+## Project Structure
+
+- `src/main.jsx` - app shell, top navigation, shared search state
+- `mesh_query_ui.jsx` - global search and shared query builder UI
+- `mesh_page_header.jsx` - shared tree header component
+- `mesh_a_concepts.jsx` - Anatomy
+- `mesh_b_concepts.jsx` - Organisms
+- `mesh_c_concepts.jsx` - Diseases
+- `mesh_d_concepts.jsx` - Chemicals and Drugs
+- `mesh_e_concepts.jsx` - Techniques
+- `mesh_f_concepts.jsx` - Psychology and Psychiatry
+- `mesh_g_concepts.jsx` - Phenomena and Processes
+- `mesh_h_concepts.jsx` - Disciplines and Occupations
+- `mesh_i_concepts.jsx` - Anthropology, Education, Sociology, and Social Phenomena
+- `mesh_j_concepts.jsx` - Technology, Industry, and Agriculture
+- `mesh_k_concepts.jsx` - Humanities
+- `mesh_l_concepts.jsx` - Information Science
+- `mesh_swimlanes.jsx` - Named Groups
+- `mesh_n_concepts.jsx` - Health Care
+- `mesh_v_concepts.jsx` - Publication Types
+- `mesh_z_concepts.jsx` - Geographicals
+- `mesh_cosmos.jsx` - tiled overview page
+
+## Notes On The Data
+
+This is a design and interaction prototype. Some views use curated or partial
+MeSH data to explore interface patterns before wiring every tree to complete
+source data.
+
+The important design premise is that MeSH is not a single simple tree. It is a
+set of hierarchical trees where descriptors can have multiple placements. The
+UI should make that structure understandable before asking users to build
+queries.
+
+## Longer-Term Direction
+
+The next step is to turn exploration into lightweight PubMed filtering:
+
+- select terms across trees
+- mark major or minor topic intent
+- open the resulting MeSH query in PubMed
+- eventually fetch counts, co-occurring MeSH headings, and publication trends
+
+This started from an interest in comparing biomedical research topics, but the
+tool itself is intentionally topic-agnostic.
